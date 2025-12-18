@@ -1,0 +1,643 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		36C2FE82D5EEE0A3F4F23D39 /* libPods-NLSpotify.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D6918E3454DD5D0EA9443A9B /* libPods-NLSpotify.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4C7D81F72EE3EF47003C5014 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C7D81D32EE3EF46003C5014 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C7D81DA2EE3EF46003C5014;
+			remoteInfo = NLSpotify;
+		};
+		4C7D82012EE3EF47003C5014 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C7D81D32EE3EF46003C5014 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C7D81DA2EE3EF46003C5014;
+			remoteInfo = NLSpotify;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		31285C5A4DAE538204A63130 /* Pods-NLSpotify.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NLSpotify.release.xcconfig"; path = "Target Support Files/Pods-NLSpotify/Pods-NLSpotify.release.xcconfig"; sourceTree = "<group>"; };
+		4C7D81DB2EE3EF46003C5014 /* NLSpotify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NLSpotify.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C7D81F62EE3EF47003C5014 /* NLSpotifyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NLSpotifyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C7D82002EE3EF47003C5014 /* NLSpotifyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NLSpotifyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C15C2CB46AB8113E6C90FAED /* Pods-NLSpotify.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NLSpotify.debug.xcconfig"; path = "Target Support Files/Pods-NLSpotify/Pods-NLSpotify.debug.xcconfig"; sourceTree = "<group>"; };
+		D6918E3454DD5D0EA9443A9B /* libPods-NLSpotify.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-NLSpotify.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4C7D82082EE3EF47003C5014 /* Exceptions for "NLSpotify" folder in "NLSpotify" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4C7D81DA2EE3EF46003C5014 /* NLSpotify */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4C7D81DD2EE3EF46003C5014 /* NLSpotify */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4C7D82082EE3EF47003C5014 /* Exceptions for "NLSpotify" folder in "NLSpotify" target */,
+			);
+			path = NLSpotify;
+			sourceTree = "<group>";
+		};
+		4C7D81F92EE3EF47003C5014 /* NLSpotifyTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NLSpotifyTests;
+			sourceTree = "<group>";
+		};
+		4C7D82032EE3EF47003C5014 /* NLSpotifyUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NLSpotifyUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4C7D81D82EE3EF46003C5014 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				36C2FE82D5EEE0A3F4F23D39 /* libPods-NLSpotify.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C7D81F32EE3EF47003C5014 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C7D81FD2EE3EF47003C5014 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4C7D81D22EE3EF46003C5014 = {
+			isa = PBXGroup;
+			children = (
+				4C7D81DD2EE3EF46003C5014 /* NLSpotify */,
+				4C7D81F92EE3EF47003C5014 /* NLSpotifyTests */,
+				4C7D82032EE3EF47003C5014 /* NLSpotifyUITests */,
+				4C7D81DC2EE3EF46003C5014 /* Products */,
+				B0C5129F7DEA5E674AA6B5CE /* Pods */,
+				B21E4A5241D496DD3E22619B /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		4C7D81DC2EE3EF46003C5014 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4C7D81DB2EE3EF46003C5014 /* NLSpotify.app */,
+				4C7D81F62EE3EF47003C5014 /* NLSpotifyTests.xctest */,
+				4C7D82002EE3EF47003C5014 /* NLSpotifyUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B0C5129F7DEA5E674AA6B5CE /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				C15C2CB46AB8113E6C90FAED /* Pods-NLSpotify.debug.xcconfig */,
+				31285C5A4DAE538204A63130 /* Pods-NLSpotify.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		B21E4A5241D496DD3E22619B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D6918E3454DD5D0EA9443A9B /* libPods-NLSpotify.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4C7D81DA2EE3EF46003C5014 /* NLSpotify */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C7D82092EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotify" */;
+			buildPhases = (
+				EC0CC7AF3C20543AEBF4FFA6 /* [CP] Check Pods Manifest.lock */,
+				4C7D81D72EE3EF46003C5014 /* Sources */,
+				4C7D81D82EE3EF46003C5014 /* Frameworks */,
+				4C7D81D92EE3EF46003C5014 /* Resources */,
+				050F6DA2131D8EAB99B3C97B /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4C7D81DD2EE3EF46003C5014 /* NLSpotify */,
+			);
+			name = NLSpotify;
+			productName = NLSpotify;
+			productReference = 4C7D81DB2EE3EF46003C5014 /* NLSpotify.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4C7D81F52EE3EF47003C5014 /* NLSpotifyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C7D820E2EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotifyTests" */;
+			buildPhases = (
+				4C7D81F22EE3EF47003C5014 /* Sources */,
+				4C7D81F32EE3EF47003C5014 /* Frameworks */,
+				4C7D81F42EE3EF47003C5014 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C7D81F82EE3EF47003C5014 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C7D81F92EE3EF47003C5014 /* NLSpotifyTests */,
+			);
+			name = NLSpotifyTests;
+			productName = NLSpotifyTests;
+			productReference = 4C7D81F62EE3EF47003C5014 /* NLSpotifyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4C7D81FF2EE3EF47003C5014 /* NLSpotifyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C7D82112EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotifyUITests" */;
+			buildPhases = (
+				4C7D81FC2EE3EF47003C5014 /* Sources */,
+				4C7D81FD2EE3EF47003C5014 /* Frameworks */,
+				4C7D81FE2EE3EF47003C5014 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C7D82022EE3EF47003C5014 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C7D82032EE3EF47003C5014 /* NLSpotifyUITests */,
+			);
+			name = NLSpotifyUITests;
+			productName = NLSpotifyUITests;
+			productReference = 4C7D82002EE3EF47003C5014 /* NLSpotifyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4C7D81D32EE3EF46003C5014 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					4C7D81DA2EE3EF46003C5014 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					4C7D81F52EE3EF47003C5014 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 4C7D81DA2EE3EF46003C5014;
+					};
+					4C7D81FF2EE3EF47003C5014 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 4C7D81DA2EE3EF46003C5014;
+					};
+				};
+			};
+			buildConfigurationList = 4C7D81D62EE3EF46003C5014 /* Build configuration list for PBXProject "NLSpotify" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4C7D81D22EE3EF46003C5014;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4C7D81DC2EE3EF46003C5014 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4C7D81DA2EE3EF46003C5014 /* NLSpotify */,
+				4C7D81F52EE3EF47003C5014 /* NLSpotifyTests */,
+				4C7D81FF2EE3EF47003C5014 /* NLSpotifyUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4C7D81D92EE3EF46003C5014 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C7D81F42EE3EF47003C5014 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C7D81FE2EE3EF47003C5014 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		050F6DA2131D8EAB99B3C97B /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		EC0CC7AF3C20543AEBF4FFA6 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-NLSpotify-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4C7D81D72EE3EF46003C5014 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C7D81F22EE3EF47003C5014 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C7D81FC2EE3EF47003C5014 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4C7D81F82EE3EF47003C5014 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C7D81DA2EE3EF46003C5014 /* NLSpotify */;
+			targetProxy = 4C7D81F72EE3EF47003C5014 /* PBXContainerItemProxy */;
+		};
+		4C7D82022EE3EF47003C5014 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C7D81DA2EE3EF46003C5014 /* NLSpotify */;
+			targetProxy = 4C7D82012EE3EF47003C5014 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4C7D820A2EE3EF47003C5014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C15C2CB46AB8113E6C90FAED /* Pods-NLSpotify.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NLSpotify/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "-1.NLSpotify";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4C7D820B2EE3EF47003C5014 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 31285C5A4DAE538204A63130 /* Pods-NLSpotify.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NLSpotify/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "-1.NLSpotify";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4C7D820C2EE3EF47003C5014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		4C7D820D2EE3EF47003C5014 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4C7D820F2EE3EF47003C5014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "-1.NLSpotifyTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NLSpotify.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NLSpotify";
+			};
+			name = Debug;
+		};
+		4C7D82102EE3EF47003C5014 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "-1.NLSpotifyTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NLSpotify.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NLSpotify";
+			};
+			name = Release;
+		};
+		4C7D82122EE3EF47003C5014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "-1.NLSpotifyUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = NLSpotify;
+			};
+			name = Debug;
+		};
+		4C7D82132EE3EF47003C5014 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JASSJ2R9D6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "-1.NLSpotifyUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = NLSpotify;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4C7D81D62EE3EF46003C5014 /* Build configuration list for PBXProject "NLSpotify" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C7D820C2EE3EF47003C5014 /* Debug */,
+				4C7D820D2EE3EF47003C5014 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C7D82092EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotify" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C7D820A2EE3EF47003C5014 /* Debug */,
+				4C7D820B2EE3EF47003C5014 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C7D820E2EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotifyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C7D820F2EE3EF47003C5014 /* Debug */,
+				4C7D82102EE3EF47003C5014 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C7D82112EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotifyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C7D82122EE3EF47003C5014 /* Debug */,
+				4C7D82132EE3EF47003C5014 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4C7D81D32EE3EF46003C5014 /* Project object */;
+}
