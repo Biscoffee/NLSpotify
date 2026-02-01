@@ -28,7 +28,7 @@
                              parameters:nil
                                 success:^(id  _Nullable responseObject) {
 
-      NLSingerAlbumListModel *model = [[NLSingerAlbumListModel alloc] init];
+      //NLSingerAlbumListModel *model = [[NLSingerAlbumListModel alloc] init];
         NSArray *hotAlbums = responseObject[@"hotAlbums"];
       NSLog(@"%@", hotAlbums);
         NSMutableArray *resultArray = [NSMutableArray array];
@@ -42,7 +42,8 @@
           //NLBigListModel *model = [[NLBigListModel alloc] init];
           model.coverUrl = albumDict[@"picUrl"];
           model.title    = albumDict[@"name"];
-
+          NSString *id = albumDict[@"id"];
+          model.cardId = [id intValue];
           NSString *company = albumDict[@"company"];
           model.subtitle = company.length > 0 ? company : @"推荐歌单";
 

@@ -1,0 +1,322 @@
+//  NLMusicPlayerViewController.m
+//  NLSpotify
+//
+//  Created by 吴桐 on 2025/12/19.
+//
+
+#import "NLMusicPlayerViewController.h"
+#import "NLMusicPlayerView.h"
+#import "NLPlayerManager.h"
+#import "NLSong.h"
+#import <Masonry/Masonry.h>
+
+@interface NLMusicPlayerViewController () <NLMusicPlayerViewDelegate, UIGestureRecognizerDelegate>
+@property (nonatomic, strong) NLMusicPlayerView *playerView;
+@end
+
+@implementation NLMusicPlayerViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor clearColor];
+
+    UIView *backgroundOverlay = [[UIView alloc] init];
+    backgroundOverlay.backgroundColor = [UIColor colorWithRed:28/255.0 green:28/255.0 blue:28/255.0 alpha:1.0];
+    backgroundOverlay.tag = 999;
+    [self.view addSubview:backgroundOverlay];
+    [backgroundOverlay mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.view);
+    }];
+
+    self.playerView = [[NLMusicPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.delegate = self;
+    [self.view addSubview:self.playerView];
+    [self bindPlayer];
+    [self refreshUI];
+    
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+    pan.delegate = self; // 设置 delegate 以处理手势冲突
+    pan.minimumNumberOfTouches = 1;
+    pan.maximumNumberOfTouches = 1;
+    [self.view addGestureRecognizer:pan];
+}
+
+#pragma mark - Player Binding
+
+- (void)bindPlayer {
+//    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+//    [center addObserver:self selector:@selector(refreshUI)
+//                   name:NLPlayerSongDidChangeNotification object:nil];
+//    [center addObserver:self selector:@selector(refreshPlayState)
+//                   name:NLPlayerPlaybackStateDidChangeNotification object:nil];
+//    [center addObserver:self selector:@selector(playerProgressDidChange:)
+//                   name:NLPlayerProgressDidChangeNotification object:nil];
+        NLPlayerManager *manager = NLPlayerManager.sharedManager;
+        @weakify(self);
+
+        // 1️⃣ 歌曲变化
+        [manager.songSignal subscribeNext:^(NLSong *song) {
+            @strongify(self);
+            if (!song) return;
+
+            [self.playerView updateTitle:song.title artist:song.artist];
+            [self.playerView updateCoverURL:song.coverURL];
+
+            [self.playerView updateProgress:0];
+            [self.playerView updateCurrentTime:0 totalTime:manager.totalTime];
+        }];
+
+        // 2️⃣ 播放状态
+        [manager.playbackStateSignal subscribeNext:^(NSNumber *stateNum) {
+            @strongify(self);
+            BOOL playing = stateNum.integerValue == NLPlaybackStatePlaying;
+            [self.playerView updatePlayState:playing];
+        }];
+
+        // 3️⃣ 播放进度
+        [manager.progressSignal subscribeNext:^(NSNumber *progressNum) {
+            @strongify(self);
+            if (self.playerView.isTrackingProgress) return;
+
+            float progress = progressNum.floatValue;
+            [self.playerView updateProgress:progress];
+
+            [self.playerView updateCurrentTime:manager.currentTime
+                                     totalTime:manager.totalTime];
+        }];
+}
+
+#pragma mark - UI Update
+
+- (void)refreshUI {
+    NLSong *song = NLPlayerManager.sharedManager.currentSong;
+    if (!song) {
+        // 如果没有歌曲，显示默认状态
+        [self.playerView updateTitle:@"未播放" artist:@""];
+        [self.playerView updateCoverURL:nil];
+        [self.playerView updateProgress:0];
+        [self.playerView updateCurrentTime:0 totalTime:0];
+        return;
+    }
+
+    [self.playerView updateTitle:song.title artist:song.artist];
+    [self.playerView updateCoverURL:song.coverURL];
+    
+    // 更新进度和时间
+    float progress = NLPlayerManager.sharedManager.currentProgress;
+    [self.playerView updateProgress:progress];
+    
+    // 获取总时长和当前时间
+    NSTimeInterval currentTime = NLPlayerManager.sharedManager.currentTime;
+    NSTimeInterval totalTime = NLPlayerManager.sharedManager.totalTime;
+    [self.playerView updateCurrentTime:currentTime totalTime:totalTime];
+    
+    [self.playerView updateVolume:NLPlayerManager.sharedManager.volume];
+    [self refreshPlayState];
+}
+
+- (void)refreshPlayState {
+    BOOL playing = NLPlayerManager.sharedManager.playbackState == NLPlaybackStatePlaying;
+    [self.playerView updatePlayState:playing];
+}
+
+//- (void)playerProgressDidChange:(NSNotification *)notification {
+//    if (self.playerView.isTrackingProgress) return;
+//
+//    NSNumber *progressNum = notification.object;
+//    if (progressNum) {
+//        [self.playerView updateProgress:progressNum.floatValue];
+//    }
+//    
+//    // 同时更新时间显示
+//    NSTimeInterval currentTime = NLPlayerManager.sharedManager.currentTime;
+//    NSTimeInterval totalTime = NLPlayerManager.sharedManager.totalTime;
+//    [self.playerView updateCurrentTime:currentTime totalTime:totalTime];
+//}
+
+#pragma mark - View Delegate
+
+- (void)musicPlayerViewDidTapClose:(NLMusicPlayerView *)view {
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)musicPlayerViewDidTapPlayPause:(NLMusicPlayerView *)view {
+    [NLPlayerManager.sharedManager togglePlayPause];
+}
+
+- (void)musicPlayerViewDidTapPrevious:(NLMusicPlayerView *)view {
+    [NLPlayerManager.sharedManager playPrevious];
+}
+
+- (void)musicPlayerViewDidTapNext:(NLMusicPlayerView *)view {
+    [NLPlayerManager.sharedManager playNext];
+}
+
+- (void)musicPlayerView:(NLMusicPlayerView *)view didChangeProgress:(float)value {
+    [[NLPlayerManager sharedManager] seekToProgress:value];
+}
+
+- (void)musicPlayerView:(NLMusicPlayerView *)view didChangeVolume:(float)value {
+    [NLPlayerManager sharedManager].volume = value;
+}
+
+#pragma mark - UIGestureRecognizerDelegate
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    // 如果触摸点在 slider 或其父视图上，不响应 pan 手势
+    UIView *touchView = touch.view;
+    
+    // 检查触摸的视图是否是 slider 或其子视图
+    if ([touchView isKindOfClass:[UISlider class]]) {
+        return NO; // 直接触摸 slider，不响应 pan 手势
+    }
+    
+    // 检查触摸点是否在 slider 的区域内（扩大检查范围）
+    CGPoint touchPoint = [touch locationInView:self.playerView];
+    UIView *progressSlider = self.playerView.progressSlider;
+    UIView *volumeSlider = self.playerView.volumeSlider;
+    
+    // 将 slider 的 frame 转换到 playerView 的坐标系
+    CGRect progressFrame = [progressSlider.superview convertRect:progressSlider.frame toView:self.playerView];
+    CGRect volumeFrame = [volumeSlider.superview convertRect:volumeSlider.frame toView:self.playerView];
+    CGRect expandedProgressFrame = CGRectInset(progressFrame, -10, -30);
+    CGRect expandedVolumeFrame = CGRectInset(volumeFrame, -10, -30);
+    
+    if (CGRectContainsPoint(expandedProgressFrame, touchPoint) || CGRectContainsPoint(expandedVolumeFrame, touchPoint)) {
+        return NO; // 触摸点在 slider 区域内，不响应 pan 手势
+    }
+    return YES;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    // 如果是 pan 手势，检查初始触摸点和滑动方向
+    if ([gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
+        UIPanGestureRecognizer *pan = (UIPanGestureRecognizer *)gestureRecognizer;
+        CGPoint location = [pan locationInView:self.playerView];
+        CGPoint translation = [pan translationInView:self.view];
+        
+        // 检查是否在 slider 区域内
+        UIView *progressSlider = self.playerView.progressSlider;
+        UIView *volumeSlider = self.playerView.volumeSlider;
+        
+        CGRect progressFrame = [progressSlider.superview convertRect:progressSlider.frame toView:self.playerView];
+        CGRect volumeFrame = [volumeSlider.superview convertRect:volumeSlider.frame toView:self.playerView];
+        
+        // 扩大检查范围
+        CGRect expandedProgressFrame = CGRectInset(progressFrame, -20, -40);
+        CGRect expandedVolumeFrame = CGRectInset(volumeFrame, -20, -40);
+        
+        if (CGRectContainsPoint(expandedProgressFrame, location) || CGRectContainsPoint(expandedVolumeFrame, location)) {
+            // 如果在 slider 区域，且是水平滑动，不开始 pan 手势
+            if (fabs(translation.x) > fabs(translation.y)) {
+                return NO; // 水平滑动，让 slider 处理
+            }
+            // 即使是垂直滑动，如果在 slider 区域，也不响应（避免误触）
+            return NO;
+        }
+    }
+    
+    return YES;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    // 如果另一个手势是 slider 的手势，不同时识别
+    if ([otherGestureRecognizer.view isKindOfClass:[UISlider class]]) {
+        return NO;
+    }
+    return NO;
+}
+
+- (void)handlePan:(UIPanGestureRecognizer *)pan {
+    CGPoint translation = [pan translationInView:self.view];
+    CGPoint velocity = [pan velocityInView:self.view];
+    
+    // 只处理向下滑动
+    if (translation.y < 0) {
+        // 如果向上滑动，重置状态
+        if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
+            [self resetDismissAnimation];
+        }
+        return;
+    }
+    
+    // 计算下滑进度（使用更大的阈值，使交互更流畅）
+    CGFloat dismissThreshold = 400.0;
+    CGFloat progress = MIN(translation.y / dismissThreshold, 1.0);
+    
+    if (pan.state == UIGestureRecognizerStateBegan) {
+        // 开始下滑时，可以添加触觉反馈
+        if (@available(iOS 10.0, *)) {
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            [feedback impactOccurred];
+        }
+    } else if (pan.state == UIGestureRecognizerStateChanged) {
+        // 更新视图位置和进度
+        self.view.transform = CGAffineTransformMakeTranslation(0, translation.y);
+        self.playerView.dismissProgress = progress;
+        
+        // 在下拉过程中逐渐显示背景（让后面的页面可见）
+        // 通过调整背景层的透明度，让后面的页面逐渐显示
+        UIView *backgroundOverlay = [self.view viewWithTag:999];
+        if (backgroundOverlay) {
+            backgroundOverlay.alpha = 1.0 - progress; // 下拉时背景层逐渐透明
+        }
+    } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
+        // 判断是否应该关闭：进度超过阈值或向下速度足够快
+        BOOL shouldDismiss = progress > 0.3 || velocity.y > 500;
+        
+        if (shouldDismiss) {
+            // 关闭播放器
+            [self dismissWithAnimation:progress];
+        } else {
+            // 恢复原状
+            [self resetDismissAnimation];
+        }
+    }
+}
+
+- (void)dismissWithAnimation:(CGFloat)progress {
+    // 计算剩余距离
+    CGFloat remainingDistance = self.view.bounds.size.height - self.view.transform.ty;
+    
+    // 根据剩余距离和速度计算动画时长
+    CGFloat duration = MIN(remainingDistance / 800.0, 0.4);
+    
+    UIView *backgroundOverlay = [self.view viewWithTag:999];
+    [UIView animateWithDuration:duration
+                          delay:0
+         usingSpringWithDamping:0.8
+          initialSpringVelocity:0.5
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.view.transform = CGAffineTransformMakeTranslation(0, self.view.bounds.size.height);
+        self.playerView.dismissProgress = 1.0;
+        if (backgroundOverlay) {
+            backgroundOverlay.alpha = 0.0; // 完全透明，显示后面的页面
+        }
+    } completion:^(BOOL finished) {
+        [self dismissViewControllerAnimated:NO completion:nil];
+    }];
+}
+
+- (void)resetDismissAnimation {
+    UIView *backgroundOverlay = [self.view viewWithTag:999];
+    [UIView animateWithDuration:0.3
+                          delay:0
+         usingSpringWithDamping:0.8
+          initialSpringVelocity:0.5
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.view.transform = CGAffineTransformIdentity;
+        self.playerView.dismissProgress = 0.0;
+        if (backgroundOverlay) {
+            backgroundOverlay.alpha = 1.0; // 恢复不透明
+        }
+    } completion:nil];
+}
+
+//- (void)dealloc {
+//    [NSNotificationCenter.defaultCenter removeObserver:self];
+//}
+
+@end

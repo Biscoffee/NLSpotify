@@ -1,0 +1,78 @@
+//
+//  NLTabBarController.m
+//  NLSpotify
+//
+//  Created by 吴桐 on 2025/12/14.
+//
+
+#import "NLTabBarController.h"
+#import "NLAdvertiseViewController.h"
+#import "NLCreateViewController.h"
+#import "NLMusicViewController.h"
+#import "NLSearchViewController.h"
+#import "NLMusicPlayerAccessoryViewController.h"
+#import "NLMusicPlayerAccessoryView.h"
+#import "NLHomeViewController.h"
+#import "Masonry/Masonry.h"
+
+@interface NLTabBarController ()
+@property (nonatomic, strong) UIView *legacyAccessoryView;
+@property (nonatomic, strong) NLMusicPlayerAccessoryViewController *playerVC;
+@end
+
+@implementation NLTabBarController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    UITab *homeTab = [[UITab alloc] initWithTitle:@"首页"
+                                            image:[UIImage systemImageNamed:@"house"]
+                                       identifier:@"Home"
+                           viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        return [[UINavigationController alloc] initWithRootViewController:[NLHomeViewController new]];
+    }];
+
+    UITab *musicTab = [[UITab alloc] initWithTitle:@"音乐库"
+                                             image:[UIImage systemImageNamed:@"music.pages"]
+                                        identifier:@"MusicLibrary"
+                            viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        return [[UINavigationController alloc] initWithRootViewController:[NLMusicViewController new]];
+    }];
+
+    UITab *broadcastTab = [[UITab alloc] initWithTitle:@"广播"
+                                               image:[UIImage systemImageNamed:@"waveform.mid"]
+                                          identifier:@"broadcast"
+                              viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        return [[UINavigationController alloc] initWithRootViewController:[NLAdvertiseViewController new]];
+    }];
+
+//    UITab *createTab = [[UITab alloc] initWithTitle:@"创建"
+//                                              image:[UIImage systemImageNamed:@"plus"]
+//                                         identifier:@"Create"
+//                             viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+//        return [[UINavigationController alloc] initWithRootViewController:[NLCreateViewController new]];
+//    }];
+
+
+    UISearchTab *searchTab =
+    [[UISearchTab alloc] initWithViewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        NLSearchViewController *searchVC = [[NLSearchViewController alloc] init];
+        UINavigationController *navVC = [[UINavigationController alloc] initWithRootViewController:searchVC];
+        return navVC;
+    }];
+
+    searchTab.title = @"搜索";
+    searchTab.image = [UIImage systemImageNamed:@"magnifyingglass"];
+    // 非常重要！！切换到 SearchTab 时是否自动激活底部搜索框！！
+    searchTab.automaticallyActivatesSearch = NO;
+
+    self.tabs = @[homeTab, musicTab, broadcastTab, searchTab];
+    self.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollDown;
+    self.playerVC = [[NLMusicPlayerAccessoryViewController alloc] init];
+    [self addChildViewController:self.playerVC];
+
+    self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:self.playerVC.view];
+    [self.playerVC didMoveToParentViewController:self];
+}
+
+@end

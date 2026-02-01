@@ -6,30 +6,54 @@
 //
 
 #import "SceneDelegate.h"
-#import "NLHomeViewController.h"
 #import "NLTabBarController.h"
+#import "NLLoginViewController.h"
+
 @interface SceneDelegate ()
 
 @end
 
 @implementation SceneDelegate
 
-
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
-  UIWindowScene *windowScene = (UIWindowScene *)scene;
-      self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
+    UIWindowScene *windowScene = (UIWindowScene *)scene;
+    self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
 
-      // 3️⃣ 设置根控制器
-      NLTabBarController *tabBar =
-      [[NLTabBarController alloc] init];
+    // 检查登录状态
+    BOOL isLoggedIn = [[NSUserDefaults standardUserDefaults] boolForKey:@"isLoggedIn"];
 
-      self.window.rootViewController = tabBar;
+    if (isLoggedIn) {
+        // 已登录，直接进入主页面
+        NLTabBarController *tabBar = [[NLTabBarController alloc] init];
+        self.window.rootViewController = tabBar;
+    } else {
+        // 未登录，显示登录页面
+        NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
+        UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:loginVC];
+        navController.navigationBarHidden = YES;
+        self.window.rootViewController = navController;
+    }
 
-      // 4️⃣ 显示 window
-      [self.window makeKeyAndVisible];
-  // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-  // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-  // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
+    [self.window makeKeyAndVisible];
+}
+
+// 添加退出登录的方法
+- (void)logout {
+    // 清除登录状态
+    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"isLoggedIn"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    // 切换到登录页面
+    NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
+    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:loginVC];
+    navController.navigationBarHidden = YES;
+
+    // 动画切换
+    CATransition *transition = [CATransition animation];
+    transition.duration = 0.5;
+    transition.type = kCATransitionFade;
+
+    [self.window.layer addAnimation:transition forKey:kCATransition];
+    self.window.rootViewController = navController;
 }
 
 
