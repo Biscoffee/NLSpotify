@@ -16,10 +16,10 @@
             backgroundColorHex:@"#B3A2C7"  // 淡紫色偏灰
                     identifier:@"music"],
 
-        [self categoryWithName:@"古风"
-                     imageName:@"mic"
-            backgroundColorHex:@"#A2D5C6"  // 浅青绿色
-                    identifier:@"podcast"],
+//        [self categoryWithName:@"古风"
+//                     imageName:@"mic"
+//            backgroundColorHex:@"#A2D5C6"  // 浅青绿色
+//                    identifier:@"podcast"],
 
         [self categoryWithName:@"摇滚"
                      imageName:@"calendar"

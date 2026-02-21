@@ -1,10 +1,10 @@
 //
-//  NLPlayListSmallCell.h
+//  NLPlaylistCell.h
 //  NLSpotify
 //
-//  Created by 吴桐 on 2025/12/13.
+//  歌单小卡片（封面+标题），用于「为你推荐」等
 //
-//适用于最近播放、热门歌单等
+
 #import "NLHomeSectionCell.h"
 #import "NLRecommendAlbumListModel.h"
 
@@ -12,17 +12,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class NLRecommendAlbumListModel;
 
-@interface NLPlayListSmallCell : NLHomeSectionCell
-
-@property (nonatomic, copy) void(^didSelectPlayList)(NLRecommendAlbumListModel *model);
-
+@interface NLPlaylistCell : NLHomeSectionCell
+@property (nonatomic, copy) void(^didSelectPlaylist)(NLRecommendAlbumListModel *model);
 @end
 
-@interface PlayListSmallCollectionCell : UICollectionViewCell
+@interface PlaylistCollectionCell : UICollectionViewCell
 @property (nonatomic, strong) UIImageView *coverImgView;
 @property (nonatomic, strong) UILabel *nameLabel;
 - (void)configWithModel:(NLRecommendAlbumListModel *)model;
 @end
-
 
 NS_ASSUME_NONNULL_END

@@ -8,231 +8,176 @@
 #import "NLSongListHeaderView.h"
 #import <Masonry/Masonry.h>
 #import <SDWebImage/SDWebImage.h>
-#import "NLListCellModel.h"
-#import "NLSingerAlbumListModel.h"
+#import "NLHeaderModel.h"
 
 @interface NLSongListHeaderView ()
 
 @property (nonatomic, strong) UIImageView *coverImageView;
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *descLabel;
-@property (nonatomic, strong) UIImageView *artistImageView;
-@property (nonatomic, strong) UILabel *artistNameLabel;
-
-// 顶部按钮
-@property (nonatomic, strong) UIStackView *topStack;
-
-// 底部按钮
+@property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIButton *playAllButton;
-@property (nonatomic, strong) UIButton *downloadButton;
-@property (nonatomic, strong) UIButton *sortButton;
+@property (nonatomic, strong) UIButton *shuffleButton;
+@property (nonatomic, strong) UILabel *descLabel;
+@property (nonatomic, strong) UIButton *expandDescButton;
+
+@property (nonatomic, copy) NSString *fullDescText;
+@property (nonatomic, assign, readwrite) BOOL descExpanded;
 
 @end
 
 @implementation NLSongListHeaderView
 
+#pragma mark - Init
+
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
+        self.clipsToBounds = NO; // 允许内容超出 bounds，避免标题被裁剪
+        self.backgroundColor = [UIColor systemBackgroundColor];
 
-        self.backgroundColor = UIColor.clearColor;
-
-        // 封面
-        _coverImageView = [[UIImageView alloc] init];
-        _coverImageView.layer.cornerRadius = 10;
-        _coverImageView.clipsToBounds = YES;
-        [self addSubview:_coverImageView];
-
-        // 标题
-        _titleLabel = [[UILabel alloc] init];
-        _titleLabel.font = [UIFont boldSystemFontOfSize:22];
-        _titleLabel.textColor = UIColor.whiteColor;
-        _titleLabel.textAlignment = NSTextAlignmentCenter;
-        _titleLabel.numberOfLines = 2;
-        [self addSubview:_titleLabel];
-
-        // 描述
-        _descLabel = [[UILabel alloc] init];
-        _descLabel.font = [UIFont systemFontOfSize:13];
-        _descLabel.textColor = [UIColor colorWithWhite:1 alpha:0.6];
-        _descLabel.textAlignment = NSTextAlignmentCenter;
-        _descLabel.numberOfLines = 2;
-        [self addSubview:_descLabel];
-
-        // 作者头像
-        _artistImageView = [[UIImageView alloc] init];
-        _artistImageView.layer.cornerRadius = 16;
-        _artistImageView.clipsToBounds = YES;
-        [self addSubview:_artistImageView];
-
-        // 作者名
-        _artistNameLabel = [[UILabel alloc] init];
-        _artistNameLabel.font = [UIFont systemFontOfSize:15];
-        _artistNameLabel.textColor = [UIColor colorWithWhite:1 alpha:0.85];
-        [self addSubview:_artistNameLabel];
-
-        [self setupViews];
+        [self setupSubviews];
+        [self setupConstrains];
     }
     return self;
 }
 
-#pragma mark - Setup Views
+#pragma mark - Setup
 
-- (void)setupViews {
-
+- (void)setupSubviews {
     // 封面
-    [_coverImageView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self).offset(120); // 从 80 增加到 120，让整体往下移
-        make.centerX.equalTo(self);
-        make.width.height.mas_equalTo(160);
-    }];
+    _coverImageView = [[UIImageView alloc] init];
+    _coverImageView.contentMode = UIViewContentModeScaleAspectFill;
+    _coverImageView.clipsToBounds = YES;
+    _coverImageView.layer.cornerRadius = 8;
+    [self addSubview:_coverImageView];
 
-    // 标题
-    [_titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_coverImageView.mas_bottom).offset(16);
-        make.left.right.equalTo(self).inset(20);
-    }];
+    // 歌单/专辑名称
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.font = [UIFont boldSystemFontOfSize:22];
+    _titleLabel.textColor = [UIColor labelColor];
+    _titleLabel.textAlignment = NSTextAlignmentCenter;
+    _titleLabel.numberOfLines = 2;
+    // 设置内容压缩阻力 防止内容变形。
+    // 如果我没有设置，那么在展开收起时可能会随机触发其他区域变形
+    [_titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];  //垂直方向的抗压缩阻力为最高优先级
+    [_titleLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];    //同理，该行为抗拉伸
+    [self addSubview:_titleLabel];
 
-    // 描述
-    [_descLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_titleLabel.mas_bottom).offset(8);
-        make.left.right.equalTo(self).inset(20);
-    }];
+    // 副标题
+    _subtitleLabel = [[UILabel alloc] init];
+    _subtitleLabel.font = [UIFont systemFontOfSize:18];
+    _subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    _subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [_subtitleLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self addSubview:_subtitleLabel];
 
-    // 作者头像
-    [_artistImageView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_descLabel.mas_bottom).offset(14);
-        make.left.equalTo(self).offset(20);
-        make.width.height.mas_equalTo(32);
-    }];
+    // 简介
+    _descLabel = [[UILabel alloc] init];
+    _descLabel.font = [UIFont systemFontOfSize:14];
+    _descLabel.textColor = [UIColor secondaryLabelColor];
+    _descLabel.textAlignment = NSTextAlignmentLeft;
+    _descLabel.numberOfLines = 3;
 
-    // 作者名
-    [_artistNameLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(_artistImageView);
-        make.left.equalTo(_artistImageView.mas_right).offset(10);
-    }];
+    [_descLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self addSubview:_descLabel];
 
-    [self setupActionViews];
+    // 展开/收起按钮
+    _expandDescButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [_expandDescButton setTitle:@"更多" forState:UIControlStateNormal];
+    _expandDescButton.titleLabel.font = [UIFont systemFontOfSize:14];
+    [_expandDescButton setTitleColor:[UIColor systemBlueColor] forState:UIControlStateNormal];
+    [_expandDescButton addTarget:self action:@selector(expandDescTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:_expandDescButton];
 }
 
-#pragma mark - Action Buttons
-
-- (void)setupActionViews {
-
-    // ===== 顶部按钮（转发 / 评论 / 喜欢）=====
-    _topStack = [[UIStackView alloc] init];
-    _topStack.axis = UILayoutConstraintAxisHorizontal;
-    _topStack.spacing = 24;
-    _topStack.alignment = UIStackViewAlignmentCenter;
-    [self addSubview:_topStack];
-
-    [_topStack addArrangedSubview:[self createTopItem:@"square.and.arrow.up" type:@"share"]];
-    [_topStack addArrangedSubview:[self createTopItem:@"text.bubble" type:@"comment"]];
-    [_topStack addArrangedSubview:[self createTopItem:@"heart" type:@"like"]];
-
-    [_topStack mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(self.artistImageView);
-        make.right.equalTo(self).offset(-20);
+- (void)setupConstrains {
+    CGFloat coverSide = [UIScreen mainScreen].bounds.size.width - 120;
+    if (coverSide > 240) coverSide = 240;
+    // 顶部间距：安全区域顶部 + 导航栏高度(44) + 额外间距(24)
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    CGFloat navBarHeight = 44.0;
+    CGFloat topInset = statusBarHeight + navBarHeight + 24;
+    
+    [_coverImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self).offset(topInset);
+        make.centerX.equalTo(self);
+        make.width.height.mas_equalTo(coverSide);
     }];
 
-    // ===== 底部按钮（播放全部 / 下载 / 排序）=====
-    _playAllButton = [self createPlayAllButton];
-    _downloadButton = [self createIconButton:@"arrow.down.circle"];
-    _sortButton = [self createIconButton:@"line.3.horizontal.decrease"];
-
-    [self addSubview:_playAllButton];
-    [self addSubview:_downloadButton];
-    [self addSubview:_sortButton];
-
-    // Masonry 约束
-    [_playAllButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.left.equalTo(self).offset(16);
-        make.top.equalTo(self.artistImageView.mas_bottom).offset(24);
-        make.height.mas_equalTo(44);
-        make.width.greaterThanOrEqualTo(@140);
-        make.bottom.equalTo(self).offset(-20).priority(999); // 底部约束，确保高度正确，避免内容重合
-    }];
-
-    [_downloadButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.right.equalTo(self).offset(-16);
-        make.centerY.equalTo(_playAllButton);
-        make.width.height.mas_equalTo(44);
-    }];
-
-    [_sortButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.right.equalTo(_downloadButton.mas_left).offset(-12);
-        make.centerY.equalTo(_playAllButton);
-        make.width.height.mas_equalTo(44);
+    [_titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(_coverImageView.mas_bottom).offset(12);
+        make.left.right.equalTo(self).inset(24);
     }];
     
-    // 设置底部约束，确保 headerView 高度正确计算，避免内容重合
+    [_subtitleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(_titleLabel.mas_bottom).offset(4);
+        make.centerX.equalTo(self);
+    }];
+
+    _playAllButton = [self createPlayAllButton];
+    _shuffleButton = [self createShuffleButton];
+    [self addSubview:_playAllButton];
+    [self addSubview:_shuffleButton];
+
     [_playAllButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.left.equalTo(self).offset(16);
-        make.top.equalTo(self.artistImageView.mas_bottom).offset(24);
-        make.height.mas_equalTo(44);
-        make.width.greaterThanOrEqualTo(@140);
-        make.bottom.equalTo(self).offset(-20).priority(999); // 底部约束，确保高度正确
+        make.top.equalTo(_subtitleLabel.mas_bottom).offset(16);
+        make.left.equalTo(self).offset(24);
+        make.right.equalTo(_shuffleButton.mas_left).offset(-12);
+        make.height.mas_equalTo(40);
+        make.width.equalTo(_shuffleButton);
+    }];
+    
+    [_shuffleButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerY.equalTo(_playAllButton);
+        make.right.equalTo(self).offset(-24);
+        make.height.mas_equalTo(40);
+    }];
+
+    [_descLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(_playAllButton.mas_bottom).offset(16);
+        make.left.equalTo(self).offset(24);
+        make.right.equalTo(self).offset(-24);
+    }];
+    
+    [_expandDescButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(_descLabel.mas_bottom).offset(4);
+        make.left.equalTo(_descLabel);
+        make.bottom.equalTo(self).offset(-24).priority(UILayoutPriorityDefaultHigh);
+        make.height.mas_equalTo(28);
     }];
 }
 
-#pragma mark - Top Items
-
-- (UIView *)createTopItem:(NSString *)icon type:(NSString *)type {
-    UIStackView *container = [[UIStackView alloc] init];
-    container.axis = UILayoutConstraintAxisVertical;
-    container.alignment = UIStackViewAlignmentCenter;
-    container.spacing = 4;
-    container.accessibilityIdentifier = type;
-
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:
-        [[UIImage systemImageNamed:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    iconView.tintColor = UIColor.whiteColor;
-
-    UILabel *label = [[UILabel alloc] init];
-    label.text = @"--";
-    label.font = [UIFont systemFontOfSize:12];
-    label.textColor = [UIColor colorWithWhite:1 alpha:0.7];
-
-    [container addArrangedSubview:iconView];
-    [container addArrangedSubview:label];
-
-    UITapGestureRecognizer *tap =
-        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(topItemTapped:)];
-    [container addGestureRecognizer:tap];
-
-    return container;
-}
-
-#pragma mark - Bottom Buttons
+#pragma mark - Buttons
 
 - (UIButton *)createPlayAllButton {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-    btn.layer.cornerRadius = 22;
+    btn.layer.cornerRadius = 20;
     btn.clipsToBounds = YES;
-    btn.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
-
-    [btn setTitle:@" 播放全部" forState:UIControlStateNormal];
-    [btn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    btn.backgroundColor = [UIColor tertiarySystemFillColor];
+    [btn setTitle:@" 播放" forState:UIControlStateNormal];
+    [btn setTitleColor:[UIColor systemRedColor] forState:UIControlStateNormal];
     btn.titleLabel.font = [UIFont boldSystemFontOfSize:15];
-
-    UIImage *icon = [[UIImage systemImageNamed:@"play.fill"]
-        imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImage *icon = [[UIImage systemImageNamed:@"play.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [btn setImage:icon forState:UIControlStateNormal];
-    btn.tintColor = UIColor.whiteColor;
-
-    [btn addTarget:self
-            action:@selector(playAllTapped)
-  forControlEvents:UIControlEventTouchUpInside];
-
+    btn.tintColor = [UIColor systemRedColor];
+    [btn addTarget:self action:@selector(playAllTapped) forControlEvents:UIControlEventTouchUpInside];
     return btn;
 }
 
-- (UIButton *)createIconButton:(NSString *)iconName {
+- (UIButton *)createShuffleButton {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-    UIImage *icon = [[UIImage systemImageNamed:iconName]
-        imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    btn.layer.cornerRadius = 20;
+    btn.clipsToBounds = YES;
+    btn.backgroundColor = [UIColor tertiarySystemFillColor];
+
+    [btn setTitle:@" 随机播放" forState:UIControlStateNormal];
+    [btn setTitleColor:[UIColor systemRedColor] forState:UIControlStateNormal];
+    btn.titleLabel.font = [UIFont boldSystemFontOfSize:15];
+    UIImage *icon = [[UIImage systemImageNamed:@"shuffle"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [btn setImage:icon forState:UIControlStateNormal];
-    btn.tintColor = UIColor.whiteColor;
+    btn.tintColor = [UIColor systemRedColor];
+    [btn addTarget:self action:@selector(shuffleTapped) forControlEvents:UIControlEventTouchUpInside];
     return btn;
 }
 
@@ -244,11 +189,33 @@
     }
 }
 
-- (void)topItemTapped:(UITapGestureRecognizer *)tap {
-    NSString *type = tap.view.accessibilityIdentifier;
-    if ([self.delegate respondsToSelector:@selector(headerView:didTapTopAction:)]) {
-        [self.delegate headerView:self didTapTopAction:type];
+- (void)shuffleTapped {
+    if ([self.delegate respondsToSelector:@selector(headerViewDidTapShuffle:)]) {
+        [self.delegate headerViewDidTapShuffle:self];
     }
+}
+
+#pragma mark - 简介展开/收起
+/**
+ * 用户点击"更多/收起"按钮
+ * 简介自适应展开的核心逻辑：
+ * 1. 切换展开状态（_descExpanded）
+ * 2. 修改 label 的 numberOfLines（展开：0，收起：3）
+ * 3. 更新按钮文字
+ * 4. 通知 VC 重新计算 headerView 高度
+ */
+- (void)expandDescTapped {
+    _descExpanded = !_descExpanded;
+    _descLabel.numberOfLines = _descExpanded ? 0 : 3;
+    //收起为0不代表显示0行，而是代表着行数无限制，系统会根据文字数量自动
+    [_expandDescButton setTitle:_descExpanded ? @"收起" : @"更多" forState:UIControlStateNormal];
+    if ([self.delegate respondsToSelector:@selector(headerViewDidRequestRelayout:)]) {
+        [self.delegate headerViewDidRequestRelayout:self];
+    }
+}
+
+- (BOOL)isDescExpanded {
+    return _descExpanded;
 }
 
 #pragma mark - Config
@@ -257,15 +224,57 @@
     if (!playlist) return;
 
     NSString *cover = [playlist.coverUrl stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
-    NSString *avatar = [playlist.creatorAvatar stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
+    NSURL *coverURL = [NSURL URLWithString:cover];
+    [_coverImageView sd_setImageWithURL:coverURL];
 
-    [_coverImageView sd_setImageWithURL:[NSURL URLWithString:cover]];
     _titleLabel.text = playlist.name;
-    _descLabel.text = playlist.desc.length ? playlist.desc : @"网易云音乐歌单";
+    _subtitleLabel.text = playlist.creatorName.length ? playlist.creatorName : @"歌单";
+    _fullDescText = playlist.desc.length ? playlist.desc : @"暂无介绍";
+    _descLabel.text = _fullDescText;
+    _descExpanded = NO;
+    _descLabel.numberOfLines = 3;
+    [self updateExpandButtonVisibility];
+}
 
-    _artistNameLabel.text = playlist.creatorName;
-    [_artistImageView sd_setImageWithURL:[NSURL URLWithString:avatar]
-                        placeholderImage:[UIImage imageNamed:@"avatar_placeholder"]];
+/**
+ * 更新展开按钮的显示状态
+ * 
+ * 简介自适应展开的初始判断逻辑：
+ * 1. 如果没有简介文本，隐藏按钮
+ * 2. 使用 boundingRectWithSize 测量文本实际高度
+ * 3. 如果实际高度 > 3行高度，显示展开按钮
+ * 4. 根据是否需要展开，设置按钮高度（0 或 28pt）
+ */
+
+- (void)updateExpandButtonVisibility {
+    if (_fullDescText.length == 0) {
+        _expandDescButton.hidden = YES;
+        return;
+    }
+    
+    CGFloat width = [UIScreen mainScreen].bounds.size.width - 48; // 左右各24pt边距
+    CGFloat lineHeight = _descLabel.font.lineHeight; // 单行高度
+    CGFloat threeLineHeight = lineHeight * 3 + 4; // 3行高度 + 间距
+    
+    // 测量文本实际需要的高度
+    // 假设一个无限高的空间 (CGFLOAT_MAX) 和我刚才算好的宽度 指定的字体 (_descLabel.font) 把这段完整的文本排版一次，需要多大的矩形框 (fitRect)？”
+    CGSize maxSize = CGSizeMake(width, CGFLOAT_MAX);
+    CGRect fitRect = [_fullDescText boundingRectWithSize:maxSize
+                                                options:NSStringDrawingUsesLineFragmentOrigin
+                                             attributes:@{ NSFontAttributeName: _descLabel.font }
+                                                context:nil];
+    
+    BOOL needsExpand = fitRect.size.height > threeLineHeight;
+    _expandDescButton.hidden = !needsExpand;
+    
+    // 根据是否需要展开，设置按钮高度，直接设置hidden可能会导致Mansory出故障
+    [_expandDescButton mas_updateConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(needsExpand ? 28 : 0);
+    }];
+    
+    if (needsExpand) {
+        [_expandDescButton setTitle:_descExpanded ? @"收起" : @"更多" forState:UIControlStateNormal];
+    }
 }
 
 @end

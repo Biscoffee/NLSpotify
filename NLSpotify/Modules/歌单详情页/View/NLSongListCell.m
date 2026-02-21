@@ -1,8 +1,6 @@
 //
-//  NLSongCell.m
+//  NLSongListCell.m
 //  NLSpotify
-//
-//  Created by 吴桐 on 2026/1/8.
 //
 
 #import "NLSongListCell.h"
@@ -10,12 +8,11 @@
 #import <Masonry/Masonry.h>
 #import "SDWebImage/SDWebImage.h"
 
-
 @interface NLSongListCell ()
-
+@property (nonatomic, strong) UIImageView *thumbImageView;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *artistLabel;
-
+@property (nonatomic, strong) UIButton *moreButton;
 @end
 
 @implementation NLSongListCell
@@ -23,36 +20,65 @@
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
+        self.backgroundColor = [UIColor systemBackgroundColor];
+        self.selectionStyle = UITableViewCellSelectionStyleGray;
 
-        self.backgroundColor = UIColor.clearColor;
+        _thumbImageView = [[UIImageView alloc] init];
+        _thumbImageView.contentMode = UIViewContentModeScaleAspectFill;
+        _thumbImageView.clipsToBounds = YES;
+        _thumbImageView.layer.cornerRadius = 4;
+        _thumbImageView.backgroundColor = [UIColor tertiarySystemFillColor];
+        [self.contentView addSubview:_thumbImageView];
 
         _nameLabel = [[UILabel alloc] init];
-        _nameLabel.textColor = UIColor.whiteColor;
+        _nameLabel.textColor = [UIColor labelColor];
         _nameLabel.font = [UIFont systemFontOfSize:16];
+        _nameLabel.numberOfLines = 1;
         [self.contentView addSubview:_nameLabel];
 
         _artistLabel = [[UILabel alloc] init];
-        _artistLabel.textColor = [UIColor colorWithWhite:1 alpha:0.6];
-        _artistLabel.font = [UIFont systemFontOfSize:13];
+        _artistLabel.textColor = [UIColor secondaryLabelColor];
+        _artistLabel.font = [UIFont systemFontOfSize:14];
+        _artistLabel.numberOfLines = 1;
         [self.contentView addSubview:_artistLabel];
 
-        [_nameLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.top.equalTo(self.contentView).offset(10);
-            make.left.right.equalTo(self.contentView).inset(16);
-        }];
+        _moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_moreButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal];
+        _moreButton.tintColor = [UIColor secondaryLabelColor];
+        [self.contentView addSubview:_moreButton];
 
+        [_thumbImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.left.equalTo(self.contentView).offset(16);
+            make.centerY.equalTo(self.contentView);
+            make.size.mas_equalTo(CGSizeMake(48, 48));
+        }];
+        [_nameLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.left.equalTo(_thumbImageView.mas_right).offset(12);
+            make.right.lessThanOrEqualTo(_moreButton.mas_left).offset(-8);
+            make.top.equalTo(self.contentView).offset(12);
+        }];
         [_artistLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.top.equalTo(_nameLabel.mas_bottom).offset(4);
-            make.left.right.equalTo(_nameLabel);
-            make.bottom.equalTo(self.contentView).offset(-10);
+            make.left.equalTo(_nameLabel);
+            make.top.equalTo(_nameLabel.mas_bottom).offset(2);
+        }];
+        [_moreButton mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.right.equalTo(self.contentView).offset(-12);
+            make.centerY.equalTo(self.contentView);
+            make.size.mas_equalTo(CGSizeMake(44, 44));
         }];
     }
     return self;
 }
 
 - (void)configWithSong:(NLListCellModel *)song {
-    _nameLabel.text = song.name;
-    _artistLabel.text = song.artistName;
+    _nameLabel.text = song.name ?: @"";
+    _artistLabel.text = song.artistName ?: @"";
+    if (song.coverUrl.length > 0) {
+        NSString *url = [song.coverUrl stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
+        [_thumbImageView sd_setImageWithURL:[NSURL URLWithString:url] placeholderImage:nil];
+    } else {
+        _thumbImageView.image = nil;
+    }
 }
 
 @end

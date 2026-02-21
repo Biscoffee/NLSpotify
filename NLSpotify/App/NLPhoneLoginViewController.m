@@ -55,11 +55,22 @@
 #pragma mark - Lifecycle
 - (void)viewDidLoad {
     [super viewDidLoad];
-    [self setupUI];
+    self.view.backgroundColor = [UIColor systemBackgroundColor];
+
+    [self.view addSubview:self.scrollView];
+    [self.scrollView addSubview:self.contentView];
+    [self.contentView addSubview:self.backButton];
+    [self.contentView addSubview:self.titleLabel];
+    [self.contentView addSubview:self.loginTypeSegmentedControl];
+    [self.contentView addSubview:self.phonePasswordView];
+    [self.contentView addSubview:self.captchaView];
+    [self.contentView addSubview:self.termsLabel];
+    [self.contentView addSubview:self.termsButton];
+    [self.contentView addSubview:self.guestLoginButton];
+    [self.view addSubview:self.loadingIndicator];
+
     [self setupConstraints];
     [self setupGestures];
-
-    // Default to password login
     [self switchToPasswordLogin:YES];
 }
 
@@ -68,170 +79,15 @@
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
-    return UIStatusBarStyleLightContent;
-}
-
-#pragma mark - UI Setup
-- (void)setupUI {
-    self.view.backgroundColor = [UIColor blackColor];
-
-    [self setupScrollView];
-    [self setupHeader];
-    [self setupLoginTypeSelector];
-    [self setupPhonePasswordView];
-    [self setupCaptchaView];
-    [self setupFooter];
-    [self setupLoadingIndicator];
-}
-
-- (void)setupScrollView {
-    _scrollView = [[UIScrollView alloc] init];
-    _scrollView.showsVerticalScrollIndicator = NO;
-    [self.view addSubview:_scrollView];
-
-    _contentView = [[UIView alloc] init];
-    [_scrollView addSubview:_contentView];
-}
-
-- (void)setupHeader {
-    // Back button
-    _backButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [_backButton setImage:[UIImage systemImageNamed:@"chevron.left"] forState:UIControlStateNormal];
-    [_backButton setTintColor:[UIColor whiteColor]];
-    [_backButton addTarget:self action:@selector(backButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.contentView addSubview:_backButton];
-
-    // Title
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.text = @"手机号登录";
-    _titleLabel.font = [UIFont boldSystemFontOfSize:24];
-    _titleLabel.textColor = [UIColor whiteColor];
-    [self.contentView addSubview:_titleLabel];
-}
-
-- (void)setupLoginTypeSelector {
-    _loginTypeSegmentedControl = [[UISegmentedControl alloc] initWithItems:@[@"密码登录", @"验证码登录"]];
-    _loginTypeSegmentedControl.selectedSegmentIndex = 0;
-    _loginTypeSegmentedControl.tintColor = [UIColor systemGreenColor];
-    [_loginTypeSegmentedControl addTarget:self action:@selector(loginTypeChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.contentView addSubview:_loginTypeSegmentedControl];
-}
-
-- (void)setupPhonePasswordView {
-    _phonePasswordView = [[UIView alloc] init];
-    [self.contentView addSubview:_phonePasswordView];
-
-    // Phone field
-    _phoneTextField = [self createTextFieldWithPlaceholder:@"手机号" isSecure:NO];
-    _phoneTextField.keyboardType = UIKeyboardTypePhonePad;
-    _phoneTextField.returnKeyType = UIReturnKeyNext;
-    [_phonePasswordView addSubview:_phoneTextField];
-
-    // Password field
-    _passwordTextField = [self createTextFieldWithPlaceholder:@"密码" isSecure:YES];
-    _passwordTextField.returnKeyType = UIReturnKeyDone;
-    [_phonePasswordView addSubview:_passwordTextField];
-
-    // Forgot password
-    _forgotPasswordButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_forgotPasswordButton setTitle:@"忘记密码？" forState:UIControlStateNormal];
-    [_forgotPasswordButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
-    _forgotPasswordButton.titleLabel.font = [UIFont systemFontOfSize:14];
-    [_forgotPasswordButton addTarget:self action:@selector(forgotPasswordTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_phonePasswordView addSubview:_forgotPasswordButton];
-
-    // Login button
-    _loginButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    _loginButton.backgroundColor = [UIColor systemGreenColor];
-    _loginButton.layer.cornerRadius = 25;
-    _loginButton.clipsToBounds = YES;
-    [_loginButton setTitle:@"登录" forState:UIControlStateNormal];
-    [_loginButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    _loginButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
-    [_loginButton addTarget:self action:@selector(passwordLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_phonePasswordView addSubview:_loginButton];
-}
-
-- (void)setupCaptchaView {
-    _captchaView = [[UIView alloc] init];
-    _captchaView.alpha = 0;
-    [self.contentView addSubview:_captchaView];
-
-    // Captcha phone field
-    _captchaPhoneTextField = [self createTextFieldWithPlaceholder:@"手机号" isSecure:NO];
-    _captchaPhoneTextField.keyboardType = UIKeyboardTypePhonePad;
-    [_captchaView addSubview:_captchaPhoneTextField];
-
-    // Captcha input container
-    _captchaInputContainer = [[UIView alloc] init];
-    [_captchaView addSubview:_captchaInputContainer];
-
-    // Captcha field
-    _captchaTextField = [self createTextFieldWithPlaceholder:@"验证码" isSecure:NO];
-    _captchaTextField.keyboardType = UIKeyboardTypeNumberPad;
-    [_captchaInputContainer addSubview:_captchaTextField];
-
-    // Get captcha button
-    _getCaptchaButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    _getCaptchaButton.backgroundColor = [UIColor clearColor];
-    _getCaptchaButton.layer.cornerRadius = 4;
-    _getCaptchaButton.layer.borderWidth = 1;
-    _getCaptchaButton.layer.borderColor = [UIColor systemGreenColor].CGColor;
-    [_getCaptchaButton setTitle:@"获取验证码" forState:UIControlStateNormal];
-    [_getCaptchaButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
-    _getCaptchaButton.titleLabel.font = [UIFont systemFontOfSize:12];
-    [_getCaptchaButton addTarget:self action:@selector(getCaptchaTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_captchaInputContainer addSubview:_getCaptchaButton];
-
-    // Captcha login button
-    _captchaLoginButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    _captchaLoginButton.backgroundColor = [UIColor systemGreenColor];
-    _captchaLoginButton.layer.cornerRadius = 25;
-    _captchaLoginButton.clipsToBounds = YES;
-    [_captchaLoginButton setTitle:@"登录" forState:UIControlStateNormal];
-    [_captchaLoginButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    _captchaLoginButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
-    [_captchaLoginButton addTarget:self action:@selector(captchaLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_captchaView addSubview:_captchaLoginButton];
-}
-
-- (void)setupFooter {
-    // Terms
-    _termsLabel = [[UILabel alloc] init];
-    _termsLabel.text = @"登录即表示您同意";
-    _termsLabel.font = [UIFont systemFontOfSize:12];
-    _termsLabel.textColor = [UIColor lightGrayColor];
-    [self.contentView addSubview:_termsLabel];
-
-    _termsButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_termsButton setTitle:@"《用户协议》" forState:UIControlStateNormal];
-    [_termsButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
-    _termsButton.titleLabel.font = [UIFont systemFontOfSize:12];
-    [_termsButton addTarget:self action:@selector(termsButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.contentView addSubview:_termsButton];
-
-    // Guest login
-    _guestLoginButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_guestLoginButton setTitle:@"游客登录" forState:UIControlStateNormal];
-    [_guestLoginButton setTitleColor:[UIColor lightGrayColor] forState:UIControlStateNormal];
-    _guestLoginButton.titleLabel.font = [UIFont systemFontOfSize:14];
-    [_guestLoginButton addTarget:self action:@selector(guestLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.contentView addSubview:_guestLoginButton];
-}
-
-- (void)setupLoadingIndicator {
-    _loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
-    _loadingIndicator.hidesWhenStopped = YES;
-    _loadingIndicator.color = [UIColor systemGreenColor];
-    [self.view addSubview:_loadingIndicator];
+    return UIStatusBarStyleDefault; // 随深色/浅色模式自适应
 }
 
 - (UITextField *)createTextFieldWithPlaceholder:(NSString *)placeholder isSecure:(BOOL)isSecure {
     UITextField *textField = [[UITextField alloc] init];
     textField.placeholder = placeholder;
-    textField.textColor = [UIColor whiteColor];
+    textField.textColor = [UIColor labelColor];
     textField.font = [UIFont systemFontOfSize:16];
-    textField.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+    textField.backgroundColor = [UIColor tertiarySystemFillColor];
     textField.layer.cornerRadius = 8;
     textField.clipsToBounds = YES;
     textField.delegate = self;
@@ -269,127 +125,113 @@
 }
 
 - (void)setupScrollViewConstraints {
-    [_scrollView mas_makeConstraints:^(MASConstraintMaker *make) {
+    [self.scrollView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.edges.equalTo(self.view);
     }];
-
-    [_contentView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.edges.equalTo(_scrollView);
-        make.width.equalTo(_scrollView);
+    [self.contentView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.scrollView);
+        make.width.equalTo(self.scrollView);
     }];
 }
 
 - (void)setupHeaderConstraints {
-    [_backButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_contentView).offset(20);
-        make.left.equalTo(_contentView).offset(16);
+    [self.backButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.contentView).offset(20);
+        make.left.equalTo(self.contentView).offset(16);
         make.width.height.mas_equalTo(24);
     }];
-
-    [_titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_backButton.mas_bottom).offset(20);
-        make.left.equalTo(_contentView).offset(20);
+    [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.backButton.mas_bottom).offset(20);
+        make.left.equalTo(self.contentView).offset(20);
     }];
 }
 
 - (void)setupLoginTypeConstraints {
-    [_loginTypeSegmentedControl mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_titleLabel.mas_bottom).offset(30);
-        make.left.right.equalTo(_contentView).inset(20);
+    [self.loginTypeSegmentedControl mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.titleLabel.mas_bottom).offset(30);
+        make.left.right.equalTo(self.contentView).inset(20);
         make.height.mas_equalTo(40);
     }];
 }
 
 - (void)setupPhonePasswordViewConstraints {
-    [_phonePasswordView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_loginTypeSegmentedControl.mas_bottom).offset(20);
-        make.left.right.equalTo(_contentView).inset(20);
+    [self.phonePasswordView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.loginTypeSegmentedControl.mas_bottom).offset(20);
+        make.left.right.equalTo(self.contentView).inset(20);
     }];
-
-    [_phoneTextField mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_phonePasswordView);
-        make.left.right.equalTo(_phonePasswordView);
+    [self.phoneTextField mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.phonePasswordView);
+        make.left.right.equalTo(self.phonePasswordView);
         make.height.mas_equalTo(50);
     }];
-
-    [_passwordTextField mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_phoneTextField.mas_bottom).offset(12);
-        make.left.right.equalTo(_phonePasswordView);
+    [self.passwordTextField mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.phoneTextField.mas_bottom).offset(12);
+        make.left.right.equalTo(self.phonePasswordView);
         make.height.mas_equalTo(50);
     }];
-
-    [_forgotPasswordButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_passwordTextField.mas_bottom).offset(8);
-        make.right.equalTo(_phonePasswordView);
+    [self.forgotPasswordButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.passwordTextField.mas_bottom).offset(8);
+        make.right.equalTo(self.phonePasswordView);
     }];
-
-    [_loginButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_forgotPasswordButton.mas_bottom).offset(20);
-        make.left.right.equalTo(_phonePasswordView);
+    [self.loginButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.forgotPasswordButton.mas_bottom).offset(20);
+        make.left.right.equalTo(self.phonePasswordView);
         make.height.mas_equalTo(50);
-        make.bottom.equalTo(_phonePasswordView);
+        make.bottom.equalTo(self.phonePasswordView);
     }];
 }
 
 - (void)setupCaptchaViewConstraints {
-    [_captchaView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_loginTypeSegmentedControl.mas_bottom).offset(20);
-        make.left.right.equalTo(_contentView).inset(20);
+    [self.captchaView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.loginTypeSegmentedControl.mas_bottom).offset(20);
+        make.left.right.equalTo(self.contentView).inset(20);
     }];
-
-    [_captchaPhoneTextField mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_captchaView);
-        make.left.right.equalTo(_captchaView);
+    [self.captchaPhoneTextField mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.captchaView);
+        make.left.right.equalTo(self.captchaView);
         make.height.mas_equalTo(50);
     }];
-
-    [_captchaInputContainer mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_captchaPhoneTextField.mas_bottom).offset(12);
-        make.left.right.equalTo(_captchaView);
+    [self.captchaInputContainer mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.captchaPhoneTextField.mas_bottom).offset(12);
+        make.left.right.equalTo(self.captchaView);
         make.height.mas_equalTo(50);
     }];
-
-    [_captchaTextField mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.left.bottom.equalTo(_captchaInputContainer);
-        make.right.equalTo(_getCaptchaButton.mas_left).offset(-8);
+    [self.captchaTextField mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.left.bottom.equalTo(self.captchaInputContainer);
+        make.right.equalTo(self.getCaptchaButton.mas_left).offset(-8);
     }];
-
-    [_getCaptchaButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.bottom.right.equalTo(_captchaInputContainer);
+    [self.getCaptchaButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.bottom.right.equalTo(self.captchaInputContainer);
         make.width.mas_equalTo(100);
     }];
-
-    [_captchaLoginButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_captchaInputContainer.mas_bottom).offset(20);
-        make.left.right.equalTo(_captchaView);
+    [self.captchaLoginButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.captchaInputContainer.mas_bottom).offset(20);
+        make.left.right.equalTo(self.captchaView);
         make.height.mas_equalTo(50);
-        make.bottom.equalTo(_captchaView);
+        make.bottom.equalTo(self.captchaView);
     }];
 }
 
 - (void)setupFooterConstraints {
-    [_termsLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_phonePasswordView.mas_bottom).offset(40);
-        make.centerX.equalTo(_contentView).offset(-40);
+    [self.termsLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.phonePasswordView.mas_bottom).offset(40);
+        make.centerX.equalTo(self.contentView).offset(-40);
     }];
-
-    [_termsButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(_termsLabel);
-        make.left.equalTo(_termsLabel.mas_right).offset(2);
+    [self.termsButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerY.equalTo(self.termsLabel);
+        make.left.equalTo(self.termsLabel.mas_right).offset(2);
     }];
-
-    [_guestLoginButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_termsLabel.mas_bottom).offset(16);
-        make.centerX.equalTo(_contentView);
+    [self.guestLoginButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.termsLabel.mas_bottom).offset(16);
+        make.centerX.equalTo(self.contentView);
     }];
-
-    [_contentView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.bottom.equalTo(_guestLoginButton.mas_bottom).offset(30);
+    [self.contentView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.bottom.equalTo(self.guestLoginButton.mas_bottom).offset(30);
     }];
 }
 
 - (void)setupLoadingIndicatorConstraints {
-    [_loadingIndicator mas_makeConstraints:^(MASConstraintMaker *make) {
+    [self.loadingIndicator mas_makeConstraints:^(MASConstraintMaker *make) {
         make.center.equalTo(self.view);
     }];
 }
@@ -691,6 +533,166 @@
         [self passwordLoginTapped];
     }
     return YES;
+}
+
+#pragma mark - Getters
+
+- (UIScrollView *)scrollView {
+    if (!_scrollView) {
+        _scrollView = [[UIScrollView alloc] init];
+        _scrollView.showsVerticalScrollIndicator = NO;
+    }
+    return _scrollView;
+}
+
+- (UIView *)contentView {
+    if (!_contentView) {
+        _contentView = [[UIView alloc] init];
+    }
+    return _contentView;
+}
+
+- (UIButton *)backButton {
+    if (!_backButton) {
+        _backButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_backButton setImage:[UIImage systemImageNamed:@"chevron.left"] forState:UIControlStateNormal];
+        [_backButton setTintColor:[UIColor labelColor]];
+        [_backButton addTarget:self action:@selector(backButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _backButton;
+}
+
+- (UILabel *)titleLabel {
+    if (!_titleLabel) {
+        _titleLabel = [[UILabel alloc] init];
+        _titleLabel.text = @"手机号登录";
+        _titleLabel.font = [UIFont boldSystemFontOfSize:24];
+        _titleLabel.textColor = [UIColor labelColor];
+    }
+    return _titleLabel;
+}
+
+- (UISegmentedControl *)loginTypeSegmentedControl {
+    if (!_loginTypeSegmentedControl) {
+        _loginTypeSegmentedControl = [[UISegmentedControl alloc] initWithItems:@[@"密码登录", @"验证码登录"]];
+        _loginTypeSegmentedControl.selectedSegmentIndex = 0;
+        _loginTypeSegmentedControl.tintColor = [UIColor systemGreenColor];
+        [_loginTypeSegmentedControl addTarget:self action:@selector(loginTypeChanged:) forControlEvents:UIControlEventValueChanged];
+    }
+    return _loginTypeSegmentedControl;
+}
+
+- (UIView *)phonePasswordView {
+    if (!_phonePasswordView) {
+        _phonePasswordView = [[UIView alloc] init];
+        _phoneTextField = [self createTextFieldWithPlaceholder:@"手机号" isSecure:NO];
+        _phoneTextField.keyboardType = UIKeyboardTypePhonePad;
+        _phoneTextField.returnKeyType = UIReturnKeyNext;
+        [_phonePasswordView addSubview:_phoneTextField];
+
+        _passwordTextField = [self createTextFieldWithPlaceholder:@"密码" isSecure:YES];
+        _passwordTextField.returnKeyType = UIReturnKeyDone;
+        [_phonePasswordView addSubview:_passwordTextField];
+
+        _forgotPasswordButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_forgotPasswordButton setTitle:@"忘记密码？" forState:UIControlStateNormal];
+        [_forgotPasswordButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
+        _forgotPasswordButton.titleLabel.font = [UIFont systemFontOfSize:14];
+        [_forgotPasswordButton addTarget:self action:@selector(forgotPasswordTapped) forControlEvents:UIControlEventTouchUpInside];
+        [_phonePasswordView addSubview:_forgotPasswordButton];
+
+        _loginButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        _loginButton.backgroundColor = [UIColor systemGreenColor];
+        _loginButton.layer.cornerRadius = 25;
+        _loginButton.clipsToBounds = YES;
+        [_loginButton setTitle:@"登录" forState:UIControlStateNormal];
+        [_loginButton setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+        _loginButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+        [_loginButton addTarget:self action:@selector(passwordLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+        [_phonePasswordView addSubview:_loginButton];
+    }
+    return _phonePasswordView;
+}
+
+- (UIView *)captchaView {
+    if (!_captchaView) {
+        _captchaView = [[UIView alloc] init];
+        _captchaView.alpha = 0;
+
+        _captchaPhoneTextField = [self createTextFieldWithPlaceholder:@"手机号" isSecure:NO];
+        _captchaPhoneTextField.keyboardType = UIKeyboardTypePhonePad;
+        [_captchaView addSubview:_captchaPhoneTextField];
+
+        _captchaInputContainer = [[UIView alloc] init];
+        [_captchaView addSubview:_captchaInputContainer];
+
+        _captchaTextField = [self createTextFieldWithPlaceholder:@"验证码" isSecure:NO];
+        _captchaTextField.keyboardType = UIKeyboardTypeNumberPad;
+        [_captchaInputContainer addSubview:_captchaTextField];
+
+        _getCaptchaButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        _getCaptchaButton.backgroundColor = [UIColor clearColor];
+        _getCaptchaButton.layer.cornerRadius = 4;
+        _getCaptchaButton.layer.borderWidth = 1;
+        _getCaptchaButton.layer.borderColor = [UIColor systemGreenColor].CGColor;
+        [_getCaptchaButton setTitle:@"获取验证码" forState:UIControlStateNormal];
+        [_getCaptchaButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
+        _getCaptchaButton.titleLabel.font = [UIFont systemFontOfSize:12];
+        [_getCaptchaButton addTarget:self action:@selector(getCaptchaTapped) forControlEvents:UIControlEventTouchUpInside];
+        [_captchaInputContainer addSubview:_getCaptchaButton];
+
+        _captchaLoginButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        _captchaLoginButton.backgroundColor = [UIColor systemGreenColor];
+        _captchaLoginButton.layer.cornerRadius = 25;
+        _captchaLoginButton.clipsToBounds = YES;
+        [_captchaLoginButton setTitle:@"登录" forState:UIControlStateNormal];
+        [_captchaLoginButton setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+        _captchaLoginButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+        [_captchaLoginButton addTarget:self action:@selector(captchaLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+        [_captchaView addSubview:_captchaLoginButton];
+    }
+    return _captchaView;
+}
+
+- (UILabel *)termsLabel {
+    if (!_termsLabel) {
+        _termsLabel = [[UILabel alloc] init];
+        _termsLabel.text = @"登录即表示您同意";
+        _termsLabel.font = [UIFont systemFontOfSize:12];
+        _termsLabel.textColor = [UIColor tertiaryLabelColor];
+    }
+    return _termsLabel;
+}
+
+- (UIButton *)termsButton {
+    if (!_termsButton) {
+        _termsButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_termsButton setTitle:@"《用户协议》" forState:UIControlStateNormal];
+        [_termsButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
+        _termsButton.titleLabel.font = [UIFont systemFontOfSize:12];
+        [_termsButton addTarget:self action:@selector(termsButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _termsButton;
+}
+
+- (UIButton *)guestLoginButton {
+    if (!_guestLoginButton) {
+        _guestLoginButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_guestLoginButton setTitle:@"游客登录" forState:UIControlStateNormal];
+        [_guestLoginButton setTitleColor:[UIColor lightGrayColor] forState:UIControlStateNormal];
+        _guestLoginButton.titleLabel.font = [UIFont systemFontOfSize:14];
+        [_guestLoginButton addTarget:self action:@selector(guestLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _guestLoginButton;
+}
+
+- (UIActivityIndicatorView *)loadingIndicator {
+    if (!_loadingIndicator) {
+        _loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+        _loadingIndicator.hidesWhenStopped = YES;
+        _loadingIndicator.color = [UIColor systemGreenColor];
+    }
+    return _loadingIndicator;
 }
 
 @end

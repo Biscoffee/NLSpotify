@@ -31,7 +31,7 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        self.backgroundColor = [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
+        self.backgroundColor = [UIColor systemBackgroundColor];
         _scrollView = [[UIScrollView alloc] init];
         _scrollView.showsVerticalScrollIndicator = NO;
         _scrollView.alwaysBounceVertical = YES;
@@ -44,7 +44,7 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
         [_contentView addSubview:_profileSection];
 
         _separatorView = [[UIView alloc] init];
-        _separatorView.backgroundColor = [UIColor colorWithWhite:0.25 alpha:1.0];
+        _separatorView.backgroundColor = [UIColor separatorColor];
         [_contentView addSubview:_separatorView];
 
         _menuSection = [[UIView alloc] init];
@@ -79,9 +79,9 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
         avatar.image = profile.avatarImage;
     } else {
         avatar.image = [UIImage systemImageNamed:@"person.circle.fill"];
-        avatar.tintColor = [UIColor colorWithWhite:0.5 alpha:1.0];
+        avatar.tintColor = [UIColor tertiaryLabelColor];
     }
-    avatar.backgroundColor = [UIColor colorWithWhite:0.2 alpha:1.0];
+    avatar.backgroundColor = [UIColor tertiarySystemFillColor];
     avatar.layer.cornerRadius = 30;
     avatar.clipsToBounds = YES;
     avatar.contentMode = UIViewContentModeScaleAspectFill;
@@ -90,20 +90,20 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.text = profile.userName;
     nameLabel.font = [UIFont boldSystemFontOfSize:20];
-    nameLabel.textColor = [UIColor whiteColor];
+    nameLabel.textColor = [UIColor labelColor];
     [profileTapArea addSubview:nameLabel];
 
     UILabel *profileLink = [[UILabel alloc] init];
     profileLink.text = profile.profileLinkText;
     profileLink.font = [UIFont systemFontOfSize:14];
-    profileLink.textColor = [UIColor colorWithWhite:0.6 alpha:1.0];
+    profileLink.textColor = [UIColor secondaryLabelColor];
     [profileTapArea addSubview:profileLink];
 
     UIButton *statusBtn = [UIButton buttonWithType:UIButtonTypeSystem];
     [statusBtn setTitle:profile.statusButtonTitle forState:UIControlStateNormal];
-    [statusBtn setTitleColor:[UIColor colorWithWhite:0.7 alpha:1.0] forState:UIControlStateNormal];
+    [statusBtn setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
     statusBtn.titleLabel.font = [UIFont systemFontOfSize:14];
-    statusBtn.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:1.0].CGColor;
+    statusBtn.layer.borderColor = [UIColor separatorColor].CGColor;
     statusBtn.layer.borderWidth = 1;
     statusBtn.layer.cornerRadius = 8;
     [statusBtn addTarget:self action:@selector(handleStatusButtonTap) forControlEvents:UIControlEventTouchUpInside];
@@ -162,14 +162,14 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
 
     UIImageView *icon = [[UIImageView alloc] init];
     icon.image = [UIImage systemImageNamed:item.iconName];
-    icon.tintColor = [UIColor whiteColor];
+    icon.tintColor = [UIColor labelColor];
     icon.contentMode = UIViewContentModeScaleAspectFit;
     [row addSubview:icon];
 
     UILabel *label = [[UILabel alloc] init];
     label.text = item.title;
     label.font = [UIFont systemFontOfSize:16];
-    label.textColor = [UIColor whiteColor];
+    label.textColor = [UIColor labelColor];
     if (item.highlightNew) {
         NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:item.title];
         NSRange range = [item.title rangeOfString:@"・新增"];
@@ -221,26 +221,26 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = model.sectionTitle;
     titleLabel.font = [UIFont boldSystemFontOfSize:18];
-    titleLabel.textColor = [UIColor whiteColor];
+    titleLabel.textColor = [UIColor labelColor];
     [_messageSection addSubview:titleLabel];
 
     UILabel *descLabel = [[UILabel alloc] init];
     descLabel.text = model.sectionDescription;
     descLabel.font = [UIFont systemFontOfSize:14];
-    descLabel.textColor = [UIColor colorWithWhite:0.6 alpha:1.0];
+    descLabel.textColor = [UIColor secondaryLabelColor];
     descLabel.numberOfLines = 0;
     [_messageSection addSubview:descLabel];
 
     UIView *newMessageRow = [[UIView alloc] init];
     UIImageView *icon = [[UIImageView alloc] init];
     icon.image = [UIImage systemImageNamed:model.messageItemIconName];
-    icon.tintColor = [UIColor whiteColor];
+    icon.tintColor = [UIColor labelColor];
     icon.contentMode = UIViewContentModeScaleAspectFit;
     [newMessageRow addSubview:icon];
     UILabel *msgLabel = [[UILabel alloc] init];
     msgLabel.text = model.messageItemTitle;
     msgLabel.font = [UIFont systemFontOfSize:16];
-    msgLabel.textColor = [UIColor whiteColor];
+    msgLabel.textColor = [UIColor labelColor];
     [newMessageRow addSubview:msgLabel];
     [_messageSection addSubview:newMessageRow];
 

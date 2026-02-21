@@ -4,100 +4,104 @@
 //
 //  Created by 吴桐 on 2025/12/13.
 //
-#import "SDWebImage/SDWebImage.h"
 #import "NLHomeSectionCell.h"
 #import "NLSectionViewModel.h"
 #import "Masonry/Masonry.h"
-#import "NLSingerAlbumListModel.h"
-@interface NLHomeSectionCell () <UICollectionViewDelegate, UICollectionViewDataSource>
 
+@interface NLHomeSectionCell () <UICollectionViewDelegate, UICollectionViewDataSource>
+@property (nonatomic, strong) UIButton *headerTapButton;
+@property (nonatomic, strong) UIImageView *disclosureImageView;
+@property (nonatomic, assign) CGFloat collectionViewExpandedHeight; // 展开时 collectionView 高度，用于高度自适应
 @end
 
 @implementation NLHomeSectionCell
 
 - (id)initWithStyle:(UITableViewCellStyle)style
     reuseIdentifier:(nullable NSString *)reuseIdentifier {
-  self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-  if (self) {
+      self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+      if (self) {
+        self.titleLabel = [[UILabel alloc] init];
+        self.titleLabel.font = [UIFont boldSystemFontOfSize:21];
+        self.titleLabel.textColor = [UIColor labelColor];
+        [self.contentView addSubview:self.titleLabel];
 
-    self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont boldSystemFontOfSize:21];
-    self.titleLabel.textColor = [UIColor whiteColor];
-    [self.contentView addSubview:self.titleLabel];
+        UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+        layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
+        layout.minimumLineSpacing = 12;
+        layout.sectionInset = UIEdgeInsetsMake(0, 16, 0, 16);
 
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    layout.minimumLineSpacing = 12;
-    layout.sectionInset = UIEdgeInsetsMake(0, 16, 0, 16);
+        self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+        self.collectionView.backgroundColor = [UIColor clearColor];
+        self.collectionView.showsHorizontalScrollIndicator = NO;
+        self.collectionView.delegate = self;
+        self.collectionView.dataSource = self;
+          [self.contentView addSubview:self.collectionView];
 
-    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-    self.collectionView.backgroundColor = [UIColor clearColor];
-    self.collectionView.showsHorizontalScrollIndicator = NO;
-    self.collectionView.delegate = self;
-    self.collectionView.dataSource = self;
-      [self.contentView addSubview:self.collectionView];
+        [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+                    make.left.equalTo(self.contentView).offset(16);
+          make.top.equalTo(self.contentView).offset(8);
+                    make.right.equalTo(self.contentView).offset(-16);
+                    make.bottom.greaterThanOrEqualTo(self.contentView.mas_top).offset(40); // 折叠时 self-sizing：40+12+0≈52
+                }];
 
-    [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-                make.left.equalTo(self.contentView).offset(16);
-      make.top.equalTo(self.contentView).offset(8);
-                make.right.equalTo(self.contentView).offset(-16);
-            }];
+        [self.collectionView mas_makeConstraints:^(MASConstraintMaker *make) {
+                    make.top.equalTo(self.titleLabel.mas_bottom).offset(12);
+                    make.left.right.bottom.equalTo(self.contentView);
+                    make.height.mas_equalTo(0); // 在 config 中按子类 sizeForCollectionCell 更新
+          }];
 
-    [self.collectionView mas_makeConstraints:^(MASConstraintMaker *make) {
-                make.top.equalTo(self.titleLabel.mas_bottom).offset(12);
-                make.left.right.bottom.equalTo(self.contentView);
-                //make.height.mas_equalTo(200);
-      }];
+        // 标题区点击按钮（用于折叠/展开）
+        self.headerTapButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        self.headerTapButton.backgroundColor = UIColor.clearColor;
+        [self.headerTapButton addTarget:self action:@selector(headerTapped) forControlEvents:UIControlEventTouchUpInside];
+        [self.contentView addSubview:self.headerTapButton];
+        [self.headerTapButton mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.top.left.right.equalTo(self.contentView);
+            make.height.mas_equalTo(52);
+        }];
 
-    self.userAvatar = [[UIImageView alloc] init];
-    self.userAvatar.layer.cornerRadius = 18;
-    self.userAvatar.clipsToBounds = YES;
-    self.userAvatar.backgroundColor = [UIColor lightGrayColor]; 
-    [self.contentView addSubview: _userAvatar];
+        // 折叠指示箭头
+        self.disclosureImageView = [[UIImageView alloc] init];
+        UIImage *chevronDown = [UIImage systemImageNamed:@"chevron.down"];
+        //UIImage *chevronUp = [UIImage systemImageNamed:@"chevron.up"];
+        if (chevronDown) {
+            self.disclosureImageView.image = [chevronDown imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+        self.disclosureImageView.tintColor = [UIColor secondaryLabelColor];
+        self.disclosureImageView.contentMode = UIViewContentModeScaleAspectFit;
+        [self.contentView addSubview:self.disclosureImageView];
+        [self.disclosureImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(self.headerTapButton);
+            make.right.equalTo(self.contentView).offset(-16);
+            make.width.height.mas_equalTo(20);
+        }];
+      }
+      return self;
+}
 
-    self.labelSmall = [[UILabel alloc] init];
-    self.labelSmall.font = [UIFont systemFontOfSize:12];
-    self.labelSmall.textColor = [UIColor lightGrayColor];
-    self.labelSmall.text = @"的粉丝特供";
-    [self.contentView addSubview:self.labelSmall];
+- (void)headerTapped {
+    if (self.didTapHeader) self.didTapHeader(self.sectionIndex);
+}
 
-    self.userName = [[UILabel alloc] init];
-    self.userName.font = [UIFont boldSystemFontOfSize:16];
-    self.userName.textColor = UIColor.whiteColor;
-    self.userName.text = @"用户名";
-    [self.contentView addSubview:self.userName];
-
-    [self.userAvatar mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.left.equalTo(self.contentView).offset(16);
-        make.width.height.mas_equalTo(36);
+- (void)setCollapsed:(BOOL)collapsed {
+    _collapsed = collapsed;
+    self.collectionView.hidden = collapsed;
+    CGFloat h = collapsed ? 0 : self.collectionViewExpandedHeight;
+    [self.collectionView mas_updateConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(h);
     }];
-
-    [self.labelSmall mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.userAvatar.mas_top);
-        make.left.equalTo(self.userAvatar.mas_right).offset(16);
-        make.right.equalTo(self.contentView).offset(-16);
-    }];
-
-    [self.userName mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.labelSmall.mas_bottom).offset(2);
-        make.left.equalTo(self.labelSmall.mas_left);
-        make.right.equalTo(self.contentView).offset(-16);
-    }];
-  }
-  return self;
+    UIImage *img = collapsed ? [UIImage systemImageNamed:@"chevron.down"] : [UIImage systemImageNamed:@"chevron.up"];
+    if (img) self.disclosureImageView.image = [img imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
 - (void)configWithSectionVM:(nonnull NLSectionViewModel *)sectionVM {
   self.sectionVM = sectionVM;
   self.titleLabel.text = sectionVM.title;
-
-  if (sectionVM.style == NLHomeSectionStylePlayListBig) {
-          NLSingerAlbumListModel *firstModel = sectionVM.items.firstObject;
-    NSLog(@"sdfuisdhfgviusd%@ %@", firstModel.singer,  firstModel.singerUrl);
-          [self.userAvatar sd_setImageWithURL:[NSURL URLWithString:firstModel.singerUrl]];
-          self.userName.text = firstModel.singer;
-      }
   [self registerCollectionCells];
+  self.collectionViewExpandedHeight = [self sizeForCollectionCell].height;
+  [self.collectionView mas_updateConstraints:^(MASConstraintMaker *make) {
+      make.height.mas_equalTo(self.collapsed ? 0 : self.collectionViewExpandedHeight);
+  }];
   [self.collectionView reloadData];
 }
 

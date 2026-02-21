@@ -18,20 +18,22 @@
 
 @implementation NLMusicPlayerAccessoryViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.view.backgroundColor = [UIColor clearColor];
 
-    self.playerView = [[NLMusicPlayerAccessoryView alloc] initWithFrame:CGRectZero];
-    self.playerView.delegate = self;
     [self.view addSubview:self.playerView];
+    [self setupConstraints];
     [self.playerView bindPlayer];
+}
 
+- (void)setupConstraints {
     [self.playerView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.left.right.bottom.equalTo(self.view);
-        make.height.mas_equalTo(60); // 可自定义
+        make.height.mas_equalTo(60);
     }];
-
-    self.view.backgroundColor = [UIColor clearColor];
 }
 
 //- (void)playSongWithId:(NSString *)songId
@@ -96,6 +98,16 @@
 //        return rootVC;
 //    }
 //}
+
+#pragma mark - Getters
+
+- (NLMusicPlayerAccessoryView *)playerView {
+    if (!_playerView) {
+        _playerView = [[NLMusicPlayerAccessoryView alloc] initWithFrame:CGRectZero];
+        _playerView.delegate = self;
+    }
+    return _playerView;
+}
 
 @end
 /*

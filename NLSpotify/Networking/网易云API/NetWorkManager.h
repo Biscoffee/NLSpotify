@@ -6,7 +6,9 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "AFNetworking/AFNetworking.h"
+//#import "AFNetworking/AFNetworking.h"
+
+@class NetWorkManager;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,7 +22,7 @@ typedef void(^FailureBlock)(NSError *error);
 
 @interface NetWorkManager : NSObject
 
-@property (nonatomic, strong) AFHTTPSessionManager *sessionManager;
+//@property (nonatomic, strong) AFHTTPSessionManager *sessionManager;
 +(id)sharedManager;
 - (void)GET:(NSString *)url
  parameters:(NSDictionary *)params

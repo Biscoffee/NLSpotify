@@ -16,16 +16,9 @@
                     completion:(void (^)(NLHeaderModel *header,
                                          NSArray<NLListCellModel *> *songs))completion {
 
-    [[NetWorkManager sharedManager]
-     GET:@"/album"
-     parameters:@{ @"id": @(albumId) }
-     success:^(id responseObject) {
+    [[NetWorkManager sharedManager] GET:@"/album" parameters:@{ @"id": @(albumId) } success:^(id responseObject) {
 
         NSDictionary *json = (NSDictionary *)responseObject;
-
-        // =========================
-        // 1️⃣ Header（专辑信息）
-        // =========================
         NSDictionary *albumDict = json[@"album"];
         if (![albumDict isKindOfClass:[NSDictionary class]]) {
             if (completion) completion(nil, @[]);

@@ -15,171 +15,79 @@
 
 @property (nonatomic, strong) UIImageView *logoImageView;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UIView *buttonsContainer;
 @property (nonatomic, strong) UIButton *emailButton;
 @property (nonatomic, strong) UIButton *facebookButton;
 @property (nonatomic, strong) UIButton *phoneButton;
 @property (nonatomic, strong) UIButton *googleButton;
 @property (nonatomic, strong) UIButton *appleButton;
+@property (nonatomic, strong) UIButton *guestLoginButton;
 @property (nonatomic, strong) UILabel *registerHintLabel;
 @property (nonatomic, strong) UIButton *registerButton;
-@property (nonatomic, strong) UIButton *guestLoginButton;
 
 @end
 
 @implementation NLLoginViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.view.backgroundColor = [UIColor systemBackgroundColor];
+    [self setNeedsStatusBarAppearanceUpdate];
 
-    [self setupUI];
+    [self.view addSubview:self.logoImageView];
+    [self.view addSubview:self.titleLabel];
+    [self.view addSubview:self.buttonsContainer];
+    [self.view addSubview:self.registerHintLabel];
+    [self.view addSubview:self.registerButton];
+
     [self setupConstraints];
 }
 
-- (void)setupUI {
-    self.view.backgroundColor = [UIColor blackColor];
-
-    // 状态栏样式
-    [self setNeedsStatusBarAppearanceUpdate];
-
-    // Logo
-    _logoImageView = [[UIImageView alloc] init];
-    _logoImageView.image = [UIImage imageNamed:@"spotify"];
-    _logoImageView.contentMode = UIViewContentModeScaleAspectFit;
-    [self.view addSubview:_logoImageView];
-
-    // 标题
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.text = @"登录到 Spotify";
-    _titleLabel.font = [UIFont boldSystemFontOfSize:24];
-    _titleLabel.textColor = [UIColor whiteColor];
-    _titleLabel.textAlignment = NSTextAlignmentCenter;
-    [self.view addSubview:_titleLabel];
-
-
-    _phoneButton = [self createLoginButtonWithTitle:@"手机号登录"
-                                     backgroundColor:[UIColor whiteColor]
-                                           textColor:[UIColor blackColor]
-                                                 icon:@"phone.fill"];
-    [_phoneButton addTarget:self action:@selector(phoneLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:_phoneButton];
-
-    // 电子邮件按钮
-    _emailButton = [self createLoginButtonWithTitle:@"使用电子邮件继续"
-                                           backgroundColor:[UIColor systemGreenColor]
-                                               textColor:[UIColor blackColor]
-                                                     icon:nil];
-    [_emailButton addTarget:self action:@selector(emailLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-
-    // Facebook按钮
-    _facebookButton = [self createLoginButtonWithTitle:@"使用Facebook帐号继续"
-                                          backgroundColor:[UIColor whiteColor]
-                                               textColor:[UIColor blackColor]
-                                                     icon:@"f.circle.fill"];
-    [_facebookButton addTarget:self action:@selector(facebookLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-
-    // Google按钮
-    _googleButton = [self createLoginButtonWithTitle:@"使用Google帐号继续"
-                                        backgroundColor:[UIColor whiteColor]
-                                             textColor:[UIColor blackColor]
-                                                   icon:@"g.circle.fill"];
-    [_googleButton addTarget:self action:@selector(googleLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-
-    // Apple按钮
-    _appleButton = [self createLoginButtonWithTitle:@"使用Apple帐号继续"
-                                       backgroundColor:[UIColor whiteColor]
-                                            textColor:[UIColor blackColor]
-                                                  icon:@"apple.logo"];
-    [_appleButton addTarget:self action:@selector(appleLoginTapped) forControlEvents:UIControlEventTouchUpInside];
-
-    // 注册提示
-    _registerHintLabel = [[UILabel alloc] init];
-    _registerHintLabel.text = @"尚未拥有帐号？";
-    _registerHintLabel.font = [UIFont systemFontOfSize:14];
-    _registerHintLabel.textColor = [UIColor lightGrayColor];
-    [self.view addSubview:_registerHintLabel];
-
-    // 注册按钮
-    _registerButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_registerButton setTitle:@"注册" forState:UIControlStateNormal];
-    [_registerButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
-    _registerButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    [_registerButton addTarget:self action:@selector(registerButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:_registerButton];
-
-    _guestLoginButton = [self createLoginButtonWithTitle:@"游客登录"
-                                         backgroundColor:[UIColor whiteColor]
-                                               textColor:[UIColor blackColor]
-                                                     icon:nil];
-    [_guestLoginButton addTarget:self
-                         action:@selector(guestLoginTapped)
-               forControlEvents:UIControlEventTouchUpInside];
-}
+#pragma mark - Layout
 
 - (void)setupConstraints {
-    // Logo
-    [_logoImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+    [self.logoImageView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.centerX.equalTo(self.view);
         make.top.equalTo(self.view).offset(120);
         make.width.height.mas_equalTo(80);
     }];
-
-    // 标题
-    [_titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_logoImageView.mas_bottom).offset(20);
+    [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.logoImageView.mas_bottom).offset(20);
         make.centerX.equalTo(self.view);
     }];
-
-    // 按钮容器
-    UIView *buttonsContainer = [[UIView alloc] init];
-    [self.view addSubview:buttonsContainer];
-
-    [buttonsContainer mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_titleLabel.mas_bottom).offset(40);
+    [self.buttonsContainer mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.titleLabel.mas_bottom).offset(40);
         make.left.right.equalTo(self.view).inset(20);
     }];
 
-    // 按钮
-    NSArray *buttons = @[_emailButton,
-                         _phoneButton,
-                        _facebookButton,
-                        _googleButton,
-                        _appleButton,
-                        _guestLoginButton];
+    NSArray *buttons = @[self.emailButton, self.phoneButton, self.facebookButton, self.googleButton, self.appleButton, self.guestLoginButton];
     UIButton *previousButton = nil;
-
     for (UIButton *button in buttons) {
-        [buttonsContainer addSubview:button];
-
         [button mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.left.right.equalTo(buttonsContainer);
+            make.left.right.equalTo(self.buttonsContainer);
             make.height.mas_equalTo(50);
-
             if (previousButton) {
                 make.top.equalTo(previousButton.mas_bottom).offset(12);
             } else {
-                make.top.equalTo(buttonsContainer);
+                make.top.equalTo(self.buttonsContainer);
             }
         }];
-
         previousButton = button;
     }
-
     [previousButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.bottom.equalTo(buttonsContainer);
+        make.bottom.equalTo(self.buttonsContainer);
     }];
 
-    // 注册提示
-    [_registerHintLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+    [self.registerHintLabel mas_makeConstraints:^(MASConstraintMaker *make) {
         make.centerX.equalTo(self.view).offset(-20);
         make.bottom.equalTo(self.view.mas_safeAreaLayoutGuideBottom).offset(-20);
     }];
-
-    // 注册按钮
-    [_registerButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(_registerHintLabel);
-        make.left.equalTo(_registerHintLabel.mas_right).offset(4);
+    [self.registerButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerY.equalTo(self.registerHintLabel);
+        make.left.equalTo(self.registerHintLabel.mas_right).offset(4);
     }];
-
 }
 
 - (UIButton *)createLoginButtonWithTitle:(NSString *)title
@@ -312,6 +220,110 @@
 
 - (BOOL)prefersStatusBarHidden {
     return NO;
+}
+
+#pragma mark - Getters
+
+- (UIImageView *)logoImageView {
+    if (!_logoImageView) {
+        _logoImageView = [[UIImageView alloc] init];
+        _logoImageView.image = [UIImage imageNamed:@"spotify"];
+        _logoImageView.contentMode = UIViewContentModeScaleAspectFit;
+    }
+    return _logoImageView;
+}
+
+- (UILabel *)titleLabel {
+    if (!_titleLabel) {
+        _titleLabel = [[UILabel alloc] init];
+        _titleLabel.text = @"登录到 Spotify";
+        _titleLabel.font = [UIFont boldSystemFontOfSize:24];
+        _titleLabel.textColor = [UIColor labelColor];
+        _titleLabel.textAlignment = NSTextAlignmentCenter;
+    }
+    return _titleLabel;
+}
+
+- (UIView *)buttonsContainer {
+    if (!_buttonsContainer) {
+        _buttonsContainer = [[UIView alloc] init];
+        [_buttonsContainer addSubview:self.emailButton];
+        [_buttonsContainer addSubview:self.phoneButton];
+        [_buttonsContainer addSubview:self.facebookButton];
+        [_buttonsContainer addSubview:self.googleButton];
+        [_buttonsContainer addSubview:self.appleButton];
+        [_buttonsContainer addSubview:self.guestLoginButton];
+    }
+    return _buttonsContainer;
+}
+
+- (UIButton *)phoneButton {
+    if (!_phoneButton) {
+        _phoneButton = [self createLoginButtonWithTitle:@"手机号登录" backgroundColor:[UIColor secondarySystemBackgroundColor] textColor:[UIColor labelColor] icon:@"phone.fill"];
+        [_phoneButton addTarget:self action:@selector(phoneLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _phoneButton;
+}
+
+- (UIButton *)emailButton {
+    if (!_emailButton) {
+        _emailButton = [self createLoginButtonWithTitle:@"使用电子邮件继续" backgroundColor:[UIColor systemGreenColor] textColor:[UIColor labelColor] icon:nil];
+        [_emailButton addTarget:self action:@selector(emailLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _emailButton;
+}
+
+- (UIButton *)facebookButton {
+    if (!_facebookButton) {
+        _facebookButton = [self createLoginButtonWithTitle:@"使用Facebook帐号继续" backgroundColor:[UIColor secondarySystemBackgroundColor] textColor:[UIColor labelColor] icon:@"f.circle.fill"];
+        [_facebookButton addTarget:self action:@selector(facebookLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _facebookButton;
+}
+
+- (UIButton *)googleButton {
+    if (!_googleButton) {
+        _googleButton = [self createLoginButtonWithTitle:@"使用Google帐号继续" backgroundColor:[UIColor secondarySystemBackgroundColor] textColor:[UIColor labelColor] icon:@"g.circle.fill"];
+        [_googleButton addTarget:self action:@selector(googleLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _googleButton;
+}
+
+- (UIButton *)appleButton {
+    if (!_appleButton) {
+        _appleButton = [self createLoginButtonWithTitle:@"使用Apple帐号继续" backgroundColor:[UIColor secondarySystemBackgroundColor] textColor:[UIColor labelColor] icon:@"apple.logo"];
+        [_appleButton addTarget:self action:@selector(appleLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _appleButton;
+}
+
+- (UIButton *)guestLoginButton {
+    if (!_guestLoginButton) {
+        _guestLoginButton = [self createLoginButtonWithTitle:@"游客登录" backgroundColor:[UIColor secondarySystemBackgroundColor] textColor:[UIColor labelColor] icon:nil];
+        [_guestLoginButton addTarget:self action:@selector(guestLoginTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _guestLoginButton;
+}
+
+- (UILabel *)registerHintLabel {
+    if (!_registerHintLabel) {
+        _registerHintLabel = [[UILabel alloc] init];
+        _registerHintLabel.text = @"尚未拥有帐号？";
+        _registerHintLabel.font = [UIFont systemFontOfSize:14];
+        _registerHintLabel.textColor = [UIColor tertiaryLabelColor];
+    }
+    return _registerHintLabel;
+}
+
+- (UIButton *)registerButton {
+    if (!_registerButton) {
+        _registerButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_registerButton setTitle:@"注册" forState:UIControlStateNormal];
+        [_registerButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
+        _registerButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+        [_registerButton addTarget:self action:@selector(registerButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _registerButton;
 }
 
 @end

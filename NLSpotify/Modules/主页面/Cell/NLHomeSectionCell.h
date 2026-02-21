@@ -14,16 +14,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NLHomeSectionCell : UITableViewCell<UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
 
-// smallCell
+/// 共有 UI：标题、点击区、箭头、横向列表容器
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) NLSectionViewModel *sectionVM;
 
-//bigCell
-@property (nonatomic, strong) UIImageView *userAvatar;
-@property (nonatomic, strong) UILabel *labelSmall;  //你的关注特供
-@property (nonatomic, strong) UILabel *userName;
-
+// 是否折叠（只显示标题区，隐藏列表）
+@property (nonatomic, assign) BOOL collapsed;
+// 当前 cell 所在的 section 索引（用于通知 controller 切换折叠状态）
+@property (nonatomic, assign) NSInteger sectionIndex;
+/// 点击标题区时回调，参数为当前 section 的 index
+@property (nonatomic, copy, nullable) void (^didTapHeader)(NSInteger sectionIndex);
 
 -(void)configWithSectionVM:(NLSectionViewModel *) sectionVM;
 

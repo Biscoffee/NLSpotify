@@ -11,7 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSUInteger, NLSongListType) {
     NLSongListTypePlaylist,
-    NLSongListTypeAlbum
+    NLSongListTypeAlbum        
 };
 
 @interface NLSongListViewController : UIViewController

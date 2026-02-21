@@ -28,28 +28,25 @@
 }
 
 - (void)setupUI {
-    self.contentView.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+    self.contentView.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
     self.contentView.layer.cornerRadius = 8;
     self.contentView.layer.masksToBounds = YES;
 
-    // 封面图
     _coverImageView = [[UIImageView alloc] init];
     _coverImageView.contentMode = UIViewContentModeScaleAspectFill;
     _coverImageView.layer.cornerRadius = 4;
     _coverImageView.clipsToBounds = YES;
     [self.contentView addSubview:_coverImageView];
 
-    // 歌单名称
     _nameLabel = [[UILabel alloc] init];
     _nameLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    _nameLabel.textColor = [UIColor whiteColor];
+    _nameLabel.textColor = [UIColor labelColor];
     _nameLabel.numberOfLines = 2;
     [self.contentView addSubview:_nameLabel];
 
-    // 创建者
     _creatorLabel = [[UILabel alloc] init];
     _creatorLabel.font = [UIFont systemFontOfSize:12];
-    _creatorLabel.textColor = [UIColor lightGrayColor];
+    _creatorLabel.textColor = [UIColor secondaryLabelColor];
     [self.contentView addSubview:_creatorLabel];
 
     // 布局

@@ -8,37 +8,43 @@
 #import "NLMusicPlayerView.h"
 #import "NLPlayerManager.h"
 #import "NLSong.h"
+#import "NLCommentListViewController.h"
 #import <Masonry/Masonry.h>
 
 @interface NLMusicPlayerViewController () <NLMusicPlayerViewDelegate, UIGestureRecognizerDelegate>
+@property (nonatomic, strong) UIView *backgroundOverlay;
 @property (nonatomic, strong) NLMusicPlayerView *playerView;
 @end
 
 @implementation NLMusicPlayerViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor clearColor];
 
-    UIView *backgroundOverlay = [[UIView alloc] init];
-    backgroundOverlay.backgroundColor = [UIColor colorWithRed:28/255.0 green:28/255.0 blue:28/255.0 alpha:1.0];
-    backgroundOverlay.tag = 999;
-    [self.view addSubview:backgroundOverlay];
-    [backgroundOverlay mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.edges.equalTo(self.view);
-    }];
-
-    self.playerView = [[NLMusicPlayerView alloc] initWithFrame:self.view.bounds];
-    self.playerView.delegate = self;
+    [self.view addSubview:self.backgroundOverlay];
     [self.view addSubview:self.playerView];
+    [self setupConstraints];
+
     [self bindPlayer];
     [self refreshUI];
-    
+
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
-    pan.delegate = self; // 设置 delegate 以处理手势冲突
+    pan.delegate = self;
     pan.minimumNumberOfTouches = 1;
     pan.maximumNumberOfTouches = 1;
     [self.view addGestureRecognizer:pan];
+}
+
+- (void)setupConstraints {
+    [self.backgroundOverlay mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.view);
+    }];
+    [self.playerView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.view);
+    }];
 }
 
 #pragma mark - Player Binding
@@ -160,6 +166,17 @@
     [NLPlayerManager sharedManager].volume = value;
 }
 
+- (void)musicPlayerViewDidTapComment:(NLMusicPlayerView *)view {
+    NLSong *song = NLPlayerManager.sharedManager.currentSong;
+    if (!song || !song.songId.length) return;
+    NSInteger songId = [song.songId integerValue];
+    if (songId <= 0) return;
+    NLCommentListViewController *commentVC = [[NLCommentListViewController alloc] initWithResourceId:songId resourceType:NLCommentListResourceTypeSong title:[NSString stringWithFormat:@"%@ 评论", song.title ?: @"歌曲"]];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:commentVC];
+    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
 #pragma mark - UIGestureRecognizerDelegate
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
@@ -257,7 +274,7 @@
         
         // 在下拉过程中逐渐显示背景（让后面的页面可见）
         // 通过调整背景层的透明度，让后面的页面逐渐显示
-        UIView *backgroundOverlay = [self.view viewWithTag:999];
+        UIView *backgroundOverlay = self.backgroundOverlay;
         if (backgroundOverlay) {
             backgroundOverlay.alpha = 1.0 - progress; // 下拉时背景层逐渐透明
         }
@@ -282,7 +299,7 @@
     // 根据剩余距离和速度计算动画时长
     CGFloat duration = MIN(remainingDistance / 800.0, 0.4);
     
-    UIView *backgroundOverlay = [self.view viewWithTag:999];
+    UIView *backgroundOverlay = self.backgroundOverlay;
     [UIView animateWithDuration:duration
                           delay:0
          usingSpringWithDamping:0.8
@@ -300,7 +317,7 @@
 }
 
 - (void)resetDismissAnimation {
-    UIView *backgroundOverlay = [self.view viewWithTag:999];
+    UIView *backgroundOverlay = self.backgroundOverlay;
     [UIView animateWithDuration:0.3
                           delay:0
          usingSpringWithDamping:0.8
@@ -318,5 +335,29 @@
 //- (void)dealloc {
 //    [NSNotificationCenter.defaultCenter removeObserver:self];
 //}
+
+#pragma mark - Getters
+
+- (UIView *)backgroundOverlay {
+    if (!_backgroundOverlay) {
+        _backgroundOverlay = [[UIView alloc] init];
+        // 使用稍微深一点的背景色，避免纯白
+        if (@available(iOS 13.0, *)) {
+            _backgroundOverlay.backgroundColor = [UIColor secondarySystemBackgroundColor];
+        } else {
+            _backgroundOverlay.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        }
+        _backgroundOverlay.tag = 999;
+    }
+    return _backgroundOverlay;
+}
+
+- (NLMusicPlayerView *)playerView {
+    if (!_playerView) {
+        _playerView = [[NLMusicPlayerView alloc] initWithFrame:CGRectZero];
+        _playerView.delegate = self;
+    }
+    return _playerView;
+}
 
 @end

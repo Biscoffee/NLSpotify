@@ -10,10 +10,12 @@
 #import <Masonry/Masonry.h>
 #import <SDWebImage/SDWebImage.h>
 
-static const CGFloat kCoverSize = 320.0; // 减小播放时的封面大小
-static const CGFloat kControlBtnSize = 60.0; // 稍小的控制按钮
-static const CGFloat kSidePadding = 20.0; // 更小的边距
-static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些）
+static const CGFloat kCoverSize = 320.0;
+static const CGFloat kControlBtnSize = 60.0;
+static const CGFloat kSidePadding = 20.0;
+static const CGFloat kBottomBtnSize = 26.0;      // 底部图标尺寸（细化）
+static const CGFloat kBottomBtnSpacing = 56.0;  // 底部四按钮间距（拉大）
+static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 
 @interface NLMusicPlayerView ()
 
@@ -56,7 +58,12 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
-        self.backgroundColor = [UIColor colorWithRed:28/255.0 green:28/255.0 blue:28/255.0 alpha:1.0];
+        // 使用稍微深一点的背景色，避免纯白
+        if (@available(iOS 13.0, *)) {
+            self.backgroundColor = [UIColor secondarySystemBackgroundColor];
+        } else {
+            self.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        }
         self.playMode = NLPlayModeListLoop;
         self.isPlaying = NO;
         [self setupUI];
@@ -73,25 +80,25 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
     self.coverImageView.layer.cornerRadius = 12; // 更小的圆角
     self.coverImageView.clipsToBounds = YES;
     self.coverImageView.contentMode = UIViewContentModeScaleAspectFill;
-    self.coverImageView.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+    self.coverImageView.backgroundColor = [UIColor tertiarySystemFillColor];
     [self addSubview:self.coverImageView];
     
     // 2. 下滑横栏指示器（在封面上方，类似iPhone底部上滑退出指示条）
     self.dismissIndicator = [[UIView alloc] init];
-    self.dismissIndicator.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.6]; // 灰色，半透明
+    self.dismissIndicator.backgroundColor = [UIColor tertiaryLabelColor];
     self.dismissIndicator.layer.cornerRadius = 2.5; // 圆角
     [self addSubview:self.dismissIndicator];
 
     // 3. 歌曲信息（左对齐）
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.textColor = [UIColor whiteColor];
+    self.titleLabel.textColor = [UIColor labelColor];
     self.titleLabel.font = [UIFont boldSystemFontOfSize:20];
     self.titleLabel.textAlignment = NSTextAlignmentLeft;
     self.titleLabel.text = @"歌曲标题";
     [self addSubview:self.titleLabel];
 
     self.artistLabel = [[UILabel alloc] init];
-    self.artistLabel.textColor = [UIColor whiteColor];
+    self.artistLabel.textColor = [UIColor secondaryLabelColor];
     self.artistLabel.font = [UIFont systemFontOfSize:16];
     self.artistLabel.textAlignment = NSTextAlignmentLeft;
     self.artistLabel.text = @"歌手";
@@ -100,26 +107,26 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
     // 4. 收藏和更多按钮（在歌曲信息右侧）
     self.favoriteButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.favoriteButton setImage:[UIImage systemImageNamed:@"star"] forState:UIControlStateNormal];
-    self.favoriteButton.tintColor = [UIColor whiteColor];
+    self.favoriteButton.tintColor = [UIColor labelColor];
     [self.favoriteButton addTarget:self action:@selector(favoriteTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.favoriteButton];
     
     self.moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.moreButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal];
-    self.moreButton.tintColor = [UIColor whiteColor];
+    self.moreButton.tintColor = [UIColor labelColor];
     [self.moreButton addTarget:self action:@selector(moreTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.moreButton];
 
     // 5. 时间标签和进度条
     self.currentTimeLabel = [[UILabel alloc] init];
-    self.currentTimeLabel.textColor = [UIColor whiteColor];
+    self.currentTimeLabel.textColor = [UIColor secondaryLabelColor];
     self.currentTimeLabel.font = [UIFont systemFontOfSize:14];
     self.currentTimeLabel.textAlignment = NSTextAlignmentLeft;
     self.currentTimeLabel.text = @"0:00";
     [self addSubview:self.currentTimeLabel];
 
     self.totalTimeLabel = [[UILabel alloc] init];
-    self.totalTimeLabel.textColor = [UIColor whiteColor];
+    self.totalTimeLabel.textColor = [UIColor secondaryLabelColor];
     self.totalTimeLabel.font = [UIFont systemFontOfSize:14];
     self.totalTimeLabel.textAlignment = NSTextAlignmentRight;
     self.totalTimeLabel.text = @"0:00";
@@ -128,8 +135,8 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
     // 进度条
     self.progressSlider = [[NLExpandableTouchSlider alloc] init];
     [self.progressSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
-    self.progressSlider.minimumTrackTintColor = [UIColor whiteColor];
-    self.progressSlider.maximumTrackTintColor = [UIColor colorWithWhite:0.4 alpha:0.5];
+    self.progressSlider.minimumTrackTintColor = [UIColor labelColor];
+    self.progressSlider.maximumTrackTintColor = [UIColor tertiarySystemFillColor];
     // 添加多个触摸事件，确保能够响应滑动
     [self.progressSlider addTarget:self action:@selector(progressChanged:) forControlEvents:UIControlEventValueChanged];
     [self.progressSlider addTarget:self action:@selector(progressTouchDown:) forControlEvents:UIControlEventTouchDown];
@@ -141,7 +148,7 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
     self.previousButton = [UIButton buttonWithType:UIButtonTypeSystem];
     UIImageSymbolConfiguration *prevConfig = [UIImageSymbolConfiguration configurationWithPointSize:28];
     [self.previousButton setImage:[UIImage systemImageNamed:@"backward.end.fill" withConfiguration:prevConfig] forState:UIControlStateNormal];
-    self.previousButton.tintColor = [UIColor whiteColor];
+    self.previousButton.tintColor = [UIColor labelColor];
     [self.previousButton addTarget:self action:@selector(previousTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.previousButton];
 
@@ -149,35 +156,35 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
     self.playPauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
     UIImageSymbolConfiguration *playConfig = [UIImageSymbolConfiguration configurationWithPointSize:36];
     [self.playPauseButton setImage:[UIImage systemImageNamed:@"play.fill" withConfiguration:playConfig] forState:UIControlStateNormal];
-    self.playPauseButton.tintColor = [UIColor whiteColor];
+    self.playPauseButton.tintColor = [UIColor labelColor];
     [self.playPauseButton addTarget:self action:@selector(playPauseTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.playPauseButton];
 
     // 下一首按钮（双右箭头）
     self.nextButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.nextButton setImage:[UIImage systemImageNamed:@"forward.end.fill" withConfiguration:prevConfig] forState:UIControlStateNormal];
-    self.nextButton.tintColor = [UIColor whiteColor];
+    self.nextButton.tintColor = [UIColor labelColor];
     [self.nextButton addTarget:self action:@selector(nextTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.nextButton];
 
     // 7. 音量控制（左侧speaker图标，右侧speaker.wave图标）
     self.volumeLeftIcon = [[UIImageView alloc] init];
     self.volumeLeftIcon.image = [UIImage systemImageNamed:@"speaker.fill"];
-    self.volumeLeftIcon.tintColor = [UIColor colorWithWhite:0.6 alpha:1.0];
+    self.volumeLeftIcon.tintColor = [UIColor secondaryLabelColor];
     self.volumeLeftIcon.contentMode = UIViewContentModeScaleAspectFit;
     [self addSubview:self.volumeLeftIcon];
     
     self.volumeRightIcon = [[UIImageView alloc] init];
     self.volumeRightIcon.image = [UIImage systemImageNamed:@"speaker.wave.3.fill"];
-    self.volumeRightIcon.tintColor = [UIColor colorWithWhite:0.6 alpha:1.0];
+    self.volumeRightIcon.tintColor = [UIColor secondaryLabelColor];
     self.volumeRightIcon.contentMode = UIViewContentModeScaleAspectFit;
     [self addSubview:self.volumeRightIcon];
 
     self.volumeSlider = [[NLExpandableTouchSlider alloc] init];
     self.volumeSlider.value = 0.7;
     [self.volumeSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
-    self.volumeSlider.minimumTrackTintColor = [UIColor colorWithWhite:0.6 alpha:1.0];
-    self.volumeSlider.maximumTrackTintColor = [UIColor colorWithWhite:0.3 alpha:0.5];
+    self.volumeSlider.minimumTrackTintColor = [UIColor secondaryLabelColor];
+    self.volumeSlider.maximumTrackTintColor = [UIColor tertiarySystemFillColor];
     // 添加多个触摸事件，确保能够响应滑动
     [self.volumeSlider addTarget:self action:@selector(volumeChanged:) forControlEvents:UIControlEventValueChanged];
     [self.volumeSlider addTarget:self action:@selector(volumeTouchDown:) forControlEvents:UIControlEventTouchDown];
@@ -197,15 +204,12 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
 
 - (UIButton *)createBottomButtonWithIcon:(NSString *)iconName action:(SEL)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:kBottomBtnSize weight:UIImageSymbolWeightMedium];
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:kBottomBtnSize weight:UIImageSymbolWeightLight];
     [button setImage:[UIImage systemImageNamed:iconName withConfiguration:config] forState:UIControlStateNormal];
-    button.tintColor = [UIColor whiteColor];
-    
-    // 美化：添加点击高亮效果
+    button.tintColor = [UIColor labelColor];
     button.adjustsImageWhenHighlighted = NO;
     [button addTarget:self action:@selector(bottomButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(bottomButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-    
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
@@ -330,20 +334,20 @@ static const CGFloat kBottomBtnSize = 32.0; // 底部按钮大小（稍大一些
         make.height.mas_equalTo(5); // 视觉上保持细线
     }];
 
-    // 7. 底部四个功能按钮（美化：间距拉开，更靠屏幕下方）
+    // 7. 底部四个功能按钮（间距拉大、图标细化、居中分布）
     NSArray *bottomButtons = @[self.commentButton, self.playModeButton, self.playlistButton, self.addToPlaylistButton];
     CGFloat screenWidth = [UIScreen mainScreen].bounds.size.width;
-    CGFloat buttonSize = kBottomBtnSize;
-    CGFloat buttonSpacing = 40.0; // 增加按钮之间的间距，更美观
-    CGFloat totalButtonsWidth = bottomButtons.count * buttonSize + (bottomButtons.count - 1) * buttonSpacing;
-    CGFloat startX = (screenWidth - totalButtonsWidth) / 2.0; // 居中分布
+    CGFloat btnSize = 44.0; // 点击区域保持 44pt，图标为 kBottomBtnSize 更细
+    CGFloat spacing = kBottomBtnSpacing;
+    CGFloat totalWidth = bottomButtons.count * btnSize + (bottomButtons.count - 1) * spacing;
+    CGFloat startX = (screenWidth - totalWidth) / 2.0;
 
-    for (int i = 0; i < bottomButtons.count; i++) {
+    for (NSInteger i = 0; i < bottomButtons.count; i++) {
         UIButton *button = bottomButtons[i];
         [button mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.bottom.equalTo(self.mas_safeAreaLayoutGuideBottom).offset(-40); // 更靠屏幕下方
-            make.left.equalTo(self).offset(startX + i * (buttonSize + buttonSpacing));
-            make.size.mas_equalTo(buttonSize);
+            make.bottom.equalTo(self.mas_safeAreaLayoutGuideBottom).offset(-kBottomBtnBottomInset);
+            make.left.equalTo(self).offset(startX + i * (btnSize + spacing));
+            make.size.mas_equalTo(btnSize);
         }];
     }
 }

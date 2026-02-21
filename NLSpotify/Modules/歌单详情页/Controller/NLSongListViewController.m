@@ -6,20 +6,18 @@
 //
 
 #import "NLSongListViewController.h"
-#import "SDWebImage/SDWebImage.h"
 #import "NLListCellModel.h"
 #import "NLSongListCell.h"
 #import "NLSongListHeaderView.h"
 #import "NLAlbumService.h"
-#import "NLSongListServiece.h"
+#import "NLSongListService.h"
 #import "NLPlayerManager.h"
 #import "NLSong.h"
 #import "NLSongService.h"
+#import "NLCommentListViewController.h"
+#import <Masonry/Masonry.h>
 
-@interface NLSongListViewController ()
-<UITableViewDelegate,
-UITableViewDataSource,
-NLSongListHeaderViewDelegate>
+@interface NLSongListViewController () <UITableViewDelegate, UITableViewDataSource, NLSongListHeaderViewDelegate>
 
 @property (nonatomic, assign) NSInteger listId;
 @property (nonatomic, assign) NLSongListType type;
@@ -27,14 +25,8 @@ NLSongListHeaderViewDelegate>
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<NLListCellModel *> *songs;
 
-// Header
 @property (nonatomic, strong) NLSongListHeaderView *headerView;
 @property (nonatomic, strong) NLHeaderModel *header;
-
-// 背景
-@property (nonatomic, strong) UIImageView *bgImageView;
-@property (nonatomic, strong) UIVisualEffectView *blurView;
-@property (nonatomic, strong) UIView *darkMaskView;
 
 @end
 
@@ -55,87 +47,107 @@ NLSongListHeaderViewDelegate>
     return self;
 }
 
-#pragma mark - View Lifecycle
+#pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = UIColor.clearColor;
-  self.navigationController.navigationBar.barTintColor = [UIColor clearColor];
+    self.view.backgroundColor = [UIColor systemBackgroundColor];
+    [self setupNavigationBarAppearance];
+    [self.view addSubview:self.tableView];
 
-    [self setupBackground];
-    [self setupTableView];
+    [self setupConstraints];
+    [self setupNavigation];
     [self requestData];
 }
 
-#pragma mark - UI Setup
-
-- (void)setupBackground {
-    self.bgImageView = [[UIImageView alloc] initWithFrame:self.view.bounds];
-    self.bgImageView.contentMode = UIViewContentModeScaleAspectFill;
-    self.bgImageView.clipsToBounds = YES;
-    [self.view addSubview:self.bgImageView];
-
-    self.blurView = [[UIVisualEffectView alloc]
-        initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleDark]];
-    self.blurView.frame = self.view.bounds;
-    [self.view addSubview:self.blurView];
-
-    self.darkMaskView = [[UIView alloc] initWithFrame:self.view.bounds];
-    self.darkMaskView.backgroundColor =
-        [[UIColor blackColor] colorWithAlphaComponent:0.35];
-    [self.view addSubview:self.darkMaskView];
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    // 底部留一半空间，避免被 tabBar 完全挡住
+    CGFloat tabBarHeight = self.tabBarController.tabBar.frame.size.height;
+    if (tabBarHeight == 0) {
+        tabBarHeight = 49.0 + (self.view.safeAreaInsets.bottom > 0 ? self.view.safeAreaInsets.bottom : 0);
+    }
+    CGFloat bottomInset = (CGFloat)((NSInteger)(tabBarHeight * 0.5));
+    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
 }
 
-- (void)setupTableView {
-    self.tableView =
-        [[UITableView alloc] initWithFrame:self.view.bounds
-                                     style:UITableViewStylePlain];
-    self.tableView.delegate = self;
-    self.tableView.dataSource = self;
-    self.tableView.rowHeight = 60;
-    self.tableView.backgroundColor = UIColor.clearColor;
-    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+- (void)setupNavigationBarAppearance {
+    UINavigationBar *bar = self.navigationController.navigationBar;
+    bar.translucent = YES;
+    bar.barTintColor = nil;
+    bar.backgroundColor = [UIColor clearColor];
+    [bar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+    bar.shadowImage = [UIImage new];
+    bar.tintColor = [UIColor labelColor];
+    bar.titleTextAttributes = @{ NSForegroundColorAttributeName: [UIColor labelColor] };
+}
+
+- (void)setupNavigation {
+    UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"plus"] style:UIBarButtonItemStylePlain target:self action:@selector(addTapped)];
+    UIBarButtonItem *commentItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"text.bubble"] style:UIBarButtonItemStylePlain target:self action:@selector(openCommentTapped)];
+    self.navigationItem.rightBarButtonItems = @[ commentItem, addItem ];
+}
+
+- (void)addTapped { /* 加入歌单等 */ }
+
+#pragma mark - 评论区入口
+
+- (void)openCommentTapped {
+    NLCommentListResourceType type = (self.type == NLSongListTypePlaylist) 
+        ? NLCommentListResourceTypePlaylist 
+        : NLCommentListResourceTypeAlbum;
     
-    // 修复内容重合问题：确保 contentInset 正确
-    self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-    self.tableView.contentInset = UIEdgeInsetsZero;
-
-    [self.tableView registerClass:[NLSongListCell class]
-           forCellReuseIdentifier:@"NLSongCell"];
-
-    [self.view addSubview:self.tableView];
+    NLCommentListViewController *vc = [[NLCommentListViewController alloc] 
+        initWithResourceId:self.listId 
+              resourceType:type 
+                     title:[NSString stringWithFormat:@"%@ 评论", self.title ?: @"评论"]];
+    [self.navigationController pushViewController:vc animated:YES];
 }
+
+#pragma mark - Layout
+
+- (void)setupConstraints {
+    [self.tableView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.view);
+    }];
+}
+
 
 - (void)setupTableHeader {
     if (!self.headerView) {
-        // 使用固定高度，确保内容不重合
-        // 封面顶部120（从80增加到120） + 封面160 + 间距16 + 标题估算44 + 间距8 + 描述估算44 + 间距14 + 作者32 + 间距24 + 按钮44 + 底部间距20
-        CGFloat headerHeight = 120 + 160 + 16 + 44 + 8 + 44 + 14 + 32 + 24 + 44 + 20; // 约520（从480增加到520）
-        
-        self.headerView =
-            [[NLSongListHeaderView alloc]
-                initWithFrame:CGRectMake(0, 0,
-                                         self.view.bounds.size.width,
-                                         headerHeight)];
+        self.headerView = [[NLSongListHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 570)];
         self.headerView.delegate = self;
     }
 
     [self.headerView configWithPlayList:self.header];
+    [self updateHeaderViewHeight];
+}
+
+- (void)updateHeaderViewHeight {
+    CGFloat w = self.tableView.bounds.size.width;
+    CGFloat screenH = [UIScreen mainScreen].bounds.size.height;
+    CGFloat maxH = screenH * 0.75f; // 收起时最大高度限制
+    CGFloat largeHeight = 10000.0f; // 布局计算用足够大的高度，确保能正确测量所有内容
     
-    // 确保 headerView 有正确的 frame，避免内容重合
-    [self.headerView layoutIfNeeded]; // 先布局，让约束生效
-    CGFloat headerHeight = self.headerView.frame.size.height;
-    if (headerHeight <= 0) {
-        // 如果高度计算失败，使用固定高度
-        headerHeight = 480;
+    // 1. 设置足够大的 bounds，让 Auto Layout 能正确测量
+    self.headerView.bounds = CGRectMake(0, 0, w, largeHeight);
+    [self.headerView setNeedsLayout];// 强制布局
+    [self.headerView layoutIfNeeded];
+    
+    // 测量实际需要的高度
+    CGSize fitSize = [self.headerView systemLayoutSizeFittingSize:CGSizeMake(w, UILayoutFittingCompressedSize.height)];
+    CGFloat headerHeight = fitSize.height > 0 ? fitSize.height : maxH;
+    
+    // 根据展开状态决定是否限制高度
+    if (![self.headerView isDescExpanded]) {
+        // 收起状态：限制在 3/4 屏高
+        headerHeight = (CGFloat)fmin(headerHeight, maxH);
     }
-    
-    // 重新设置 frame 和 tableHeaderView，确保高度正确
-    self.headerView.frame = CGRectMake(0, 0, self.view.bounds.size.width, headerHeight);
-    self.tableView.tableHeaderView = nil; // 先清空
-    self.tableView.tableHeaderView = self.headerView; // 重新设置
-    
-    // 强制更新 table view 的布局
+    // 更新 frame 并重新设置 tableHeaderView
+    self.headerView.frame = CGRectMake(0, 0, w, headerHeight);
+    self.tableView.tableHeaderView = nil;
+    self.tableView.tableHeaderView = self.headerView;
     [self.tableView layoutIfNeeded];
 }
 
@@ -143,18 +155,15 @@ NLSongListHeaderViewDelegate>
 
 - (void)requestData {
     __weak typeof(self) weakSelf = self;
-
     if (self.type == NLSongListTypeAlbum) {
         [NLAlbumService fetchAlbumDetailWithId:self.listId
-                                   completion:
-         ^(NLHeaderModel *header,
+                                   completion:^(NLHeaderModel *header,
            NSArray<NLListCellModel *> *songs) {
             [weakSelf handleResponse:header songs:songs];
         }];
     } else {
-        [NLSongListServiece fetchPlayListDetailWithId:self.listId
-                                      completion:
-         ^(NLHeaderModel *header,
+        [NLSongListService fetchPlayListDetailWithId:self.listId
+                                      completion:^(NLHeaderModel *header,
            NSArray<NLListCellModel *> *songs) {
             [weakSelf handleResponse:header songs:songs];
         }];
@@ -163,11 +172,7 @@ NLSongListHeaderViewDelegate>
 
 - (void)handleResponse:(NLHeaderModel *)header
                 songs:(NSArray<NLListCellModel *> *)songs {
-
     self.header = header;
-    [self.bgImageView sd_setImageWithURL:
-        [NSURL URLWithString:header.coverUrl]];
-
     [self.songs removeAllObjects];
     [self.songs addObjectsFromArray:songs];
 
@@ -177,59 +182,54 @@ NLSongListHeaderViewDelegate>
 
 #pragma mark - UITableViewDataSource
 
-- (NSInteger)tableView:(UITableView *)tableView
- numberOfRowsInSection:(NSInteger)section {
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return self.songs.count;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView
-         cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-
-    NLSongListCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:@"NLSongCell"
-                                        forIndexPath:indexPath];
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    NLSongListCell *cell = [tableView dequeueReusableCellWithIdentifier:@"NLSongCell" forIndexPath:indexPath];
     [cell configWithSong:self.songs[indexPath.row]];
     return cell;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    
-    NLListCellModel *songModel = self.songs[indexPath.row];
     [self playSongAtIndex:indexPath.row];
 }
 
-
 #pragma mark - Playback
 
-- (void)playSongAtIndex:(NSInteger)index {
-    if (index < 0 || index >= self.songs.count) {
-        return;
-    }
-    // 简化：使用便捷方法将整个歌单转换为NLSong数组（使用ListCellModel的封面数据）
-    NSMutableArray<NLSong *> *songList = [NSMutableArray array];
+/// 将 self.songs 转为 NLSong 数组，可选是否打乱顺序
+- (NSMutableArray<NLSong *> *)buildSongListShuffled:(BOOL)shuffle {
+    NSMutableArray<NLSong *> *list = [NSMutableArray array];
     for (NLListCellModel *model in self.songs) {
         NLSong *song = [NLSong songWithListCellModel:model];
-        if (song) {
-            [songList addObject:song];
+        if (song) [list addObject:song];
+    }
+    if (shuffle && list.count > 1) {
+        for (NSInteger i = list.count - 1; i >= 1; i--) {
+            NSInteger j = arc4random_uniform((uint32_t)(i + 1));
+            [list exchangeObjectAtIndex:i withObjectAtIndex:j];
         }
     }
-    if (songList.count == 0) {
-        return;
-    }
-    // 获取当前选中歌曲的播放URL
-    NLListCellModel *currentModel = self.songs[index];
-    NSString *songId = [NSString stringWithFormat:@"%ld", (long)currentModel.songId];
-    NLSong *currentSong = songList[index];
+    return list;
+}
 
+/// 拉取指定位置的歌曲播放 URL，然后以该首为起点播放列表
+- (void)playSongList:(NSMutableArray<NLSong *> *)songList startIndex:(NSInteger)index {
+    if (songList.count == 0 || index < 0 || index >= songList.count) return;
+    
+    NLSong *startSong = songList[index];
+    NSString *songId = startSong.songId;
+    if (!songId.length) return;
+    
     __weak typeof(self) weakSelf = self;
     [[NLSongService sharedService] fetchPlayableURLWithSongId:songId
                                                     success:^(NSURL *playURL) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
-            // 设置播放URL并开始播放
-            currentSong.playURL = playURL;
+            startSong.playURL = playURL;
             [[NLPlayerManager sharedManager] playWithPlaylist:songList startIndex:index];
         });
     } failure:^(NSError *error) {
@@ -237,33 +237,53 @@ NLSongListHeaderViewDelegate>
     }];
 }
 
+- (void)playSongAtIndex:(NSInteger)index {
+    if (index < 0 || index >= self.songs.count) return;
+    
+    NSMutableArray<NLSong *> *songList = [self buildSongListShuffled:NO];
+    if (songList.count == 0) return;
+    
+    [self playSongList:songList startIndex:index];
+}
+
 #pragma mark - NLSongListHeaderViewDelegate
 
 - (void)headerViewDidTapPlayAll:(NLSongListHeaderView *)headerView {
-    NSLog(@"▶️ 播放全部");
+    NSMutableArray<NLSong *> *songList = [self buildSongListShuffled:NO];
+    if (songList.count == 0) return;
+    [self playSongList:songList startIndex:0];
 }
 
-- (void)headerViewDidTapDownload:(NLSongListHeaderView *)headerView {
-    NSLog(@"⬇️ 下载");
+- (void)headerViewDidTapShuffle:(NLSongListHeaderView *)headerView {
+    NSMutableArray<NLSong *> *songList = [self buildSongListShuffled:YES];
+    if (songList.count == 0) return;
+    [self playSongList:songList startIndex:0];
 }
 
-- (void)headerViewDidTapSort:(NLSongListHeaderView *)headerView {
-    NSLog(@"↕️ 排序");
+
+- (void)headerViewDidRequestRelayout:(NLSongListHeaderView *)headerView {
+    [self updateHeaderViewHeight];
 }
 
-- (void)headerView:(NLSongListHeaderView *)headerView
-  didTapTopAction:(NSString *)type {
-    NSLog(@"🔘 顶部按钮：%@", type);
-}
+#pragma mark - Getters
 
+- (UITableView *)tableView {
+    if (!_tableView) {
+        _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+        _tableView.delegate = self;
+        _tableView.dataSource = self;
+        _tableView.rowHeight = 64;
+        _tableView.backgroundColor = [UIColor systemBackgroundColor];
+        _tableView.separatorStyle = UITableViewCellSeparatorStyleSingleLine;
+        _tableView.separatorColor = [UIColor separatorColor];
+        _tableView.separatorInset = UIEdgeInsetsMake(0, 72, 0, 0);
+        _tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
+        // 底部留出空间，避免被 tabBar 遮挡（初始值，会在 viewDidLayoutSubviews 中更新）
+        _tableView.contentInset = UIEdgeInsetsMake(0, 0, 42, 0); // 约为 tabBar 高度的一半，避免挡住内容
+        _tableView.scrollIndicatorInsets = _tableView.contentInset;
+        [_tableView registerClass:[NLSongListCell class] forCellReuseIdentifier:@"NLSongCell"];
+    }
+    return _tableView;
+}
 
 @end
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/

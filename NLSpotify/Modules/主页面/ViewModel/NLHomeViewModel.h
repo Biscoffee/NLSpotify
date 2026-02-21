@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)loadDataWithCompletion:(void (^)(void))completion;
 
 - (NSInteger)numberOfSections;
-- (NLSectionViewModel *)sectionAtIndex:(NSInteger *)index;
+- (NLSectionViewModel *)sectionAtIndex:(NSInteger)index;
 
 @end
 

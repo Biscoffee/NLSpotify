@@ -24,27 +24,23 @@
 - (void)fetchRecommendPlayListWithLimit:(NSInteger)limit
                                  success:(void (^)(NSArray<NLRecommendAlbumListModel *> *))success
                                  failure:(void (^)(NSError *))failure {
+    [self fetchHighQualityPlaylistsWithCategory:@"华语" limit:limit success:success failure:failure];
+}
 
+- (void)fetchHighQualityPlaylistsWithCategory:(NSString *)category
+                                       limit:(NSInteger)limit
+                                     success:(void (^)(NSArray<NLRecommendAlbumListModel *> *))success
+                                     failure:(void (^)(NSError *))failure {
     NSString *path = @"/top/playlist/highquality";
-    NSDictionary *params = @{
-        @"limit": @(limit),
-        @"cat":@"华语"
-    };
+    NSMutableDictionary *params = [NSMutableDictionary dictionaryWithObject:@(limit) forKey:@"limit"];
+    if (category.length > 0) {
+        params[@"cat"] = category;
+    }
     [[NetWorkManager sharedManager] GET:path
                              parameters:params
                                 success:^(id responseObject) {
-
-      NSLog(@"CHĦ%@", responseObject);
         NSArray *result = responseObject[@"playlists"];
-     // NSMutableArray *resultArray = [NSMutableArray array];
-      NSLog(@"chiiiiiiiiiii%@", result);
-//      for (NSDictionary *albumDict in result) {
-//        NLRecommendAlbumListModel *model = [[NLRecommendAlbumListModel alloc] init];
-//        model.picUrl = albumDict[@"coverImgUrl"];
-//        model.name = albumDict[@"name"];
-//        [resultArray addObject:model];
-//      }
-      NSArray *resultArray = [NSArray yy_modelArrayWithClass:NLRecommendAlbumListModel.class json:result];
+        NSArray *resultArray = [NSArray yy_modelArrayWithClass:NLRecommendAlbumListModel.class json:result];
         if (success) {
             success(resultArray);
         }
@@ -54,6 +50,5 @@
         }
     }];
 }
-
 
 @end

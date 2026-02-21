@@ -1,14 +1,14 @@
 //
-//  NLSongListServiece.m
+//  NLSongListService.m
 //  NLSpotify
 //
 //  Created by 吴桐 on 2026/1/8.
 //
 
-#import "NLSongListServiece.h"
+#import "NLSongListService.h"
 #import "NLListCellModel.h"
 
-@implementation NLSongListServiece
+@implementation NLSongListService
 
 + (void)fetchPlayListDetailWithId:(NSInteger)playlistId
                        completion:(void (^)(NLHeaderModel *,
@@ -32,8 +32,7 @@
         [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
 
         NSDictionary *playlistDict = json[@"playlist"];
-      //NSLog(@"SongListService:  %@", playlistDict);
-        // ===== 歌单模型 =====
+
         NLHeaderModel *playlist = [[NLHeaderModel alloc] init];
         playlist.playlistId = [playlistDict[@"id"] integerValue];
         playlist.name = playlistDict[@"name"];
@@ -44,9 +43,7 @@
         playlist.creatorName = creator[@"nickname"];
         playlist.creatorAvatar = creator[@"avatarUrl"];
 
-        // ===== 歌曲列表 =====
         NSMutableArray *songs = [NSMutableArray array];
-     // NSLog(@"%@", songs);
         for (NSDictionary *dict in playlistDict[@"tracks"]) {
 
             NLListCellModel *song = [[NLListCellModel alloc] init];

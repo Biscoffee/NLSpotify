@@ -9,10 +9,10 @@
 
 @interface NLCategoryCell ()
 
-@property (nonatomic, strong) UIView *containerView;    // 背景容器
-@property (nonatomic, strong) UILabel *nameLabel;       // 左上角标题
-@property (nonatomic, strong) UIView *coverShadowView;  // 封面阴影容器
-@property (nonatomic, strong) UIImageView *coverImageView; // 封面图片
+@property (nonatomic, strong) UIView *containerView;       // 背景容器
+@property (nonatomic, strong) UIImageView *coverImageView;   // 格子背景：封面图铺满
+@property (nonatomic, strong) UIView *coverOverlay;         // 深色遮罩保证文字可读
+@property (nonatomic, strong) UILabel *nameLabel;            // 左上角标题
 
 @end
 
@@ -30,7 +30,6 @@
 - (void)setupUI {
     self.contentView.backgroundColor = UIColor.clearColor;
 
-    // 主容器，纯色背景
     _containerView = [[UIView alloc] init];
     _containerView.layer.cornerRadius = 12;
     _containerView.layer.masksToBounds = YES;
@@ -40,10 +39,26 @@
         make.edges.equalTo(self.contentView);
     }];
 
-    // 左上角标题
+    // 格子背景：封面图铺满整格
+    _coverImageView = [[UIImageView alloc] init];
+    _coverImageView.contentMode = UIViewContentModeScaleAspectFill;
+    _coverImageView.clipsToBounds = YES;
+    [_containerView addSubview:_coverImageView];
+    [_coverImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(_containerView);
+    }];
+
+    // 深色遮罩，保证标题可读
+    _coverOverlay = [[UIView alloc] init];
+    _coverOverlay.backgroundColor = [UIColor colorWithWhite:0 alpha:0.4];
+    [_containerView addSubview:_coverOverlay];
+    [_coverOverlay mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(_containerView);
+    }];
+
     _nameLabel = [[UILabel alloc] init];
     _nameLabel.font = [UIFont boldSystemFontOfSize:16];
-    _nameLabel.textColor = UIColor.whiteColor;
+    _nameLabel.textColor = UIColor.whiteColor; // 保持白色，文字在深色遮罩上需保证可读性
     _nameLabel.numberOfLines = 2;
     [_containerView addSubview:_nameLabel];
 
@@ -51,53 +66,27 @@
         make.top.left.equalTo(_containerView).offset(12);
         make.right.lessThanOrEqualTo(_containerView).offset(-12);
     }];
-
-    // 阴影容器（给封面一个轻微阴影）
-    _coverShadowView = [[UIView alloc] init];
-    _coverShadowView.layer.shadowColor = UIColor.blackColor.CGColor;
-    _coverShadowView.layer.shadowOpacity = 0.25;
-    _coverShadowView.layer.shadowRadius = 6;
-    _coverShadowView.layer.shadowOffset = CGSizeMake(0, 3);
-    [_containerView addSubview:_coverShadowView];
-
-    // 封面图片
-    _coverImageView = [[UIImageView alloc] init];
-    _coverImageView.contentMode = UIViewContentModeScaleAspectFill;
-    _coverImageView.layer.cornerRadius = 6;
-    _coverImageView.clipsToBounds = YES;
-    [_coverShadowView addSubview:_coverImageView];
-
-    // 布局（右下角）
-    [_coverShadowView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.width.height.mas_equalTo(75);
-        make.right.bottom.equalTo(_containerView).offset(12);
-    }];
-
-    [_coverImageView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.edges.equalTo(_coverShadowView);
-    }];
-
-    // 倾斜效果
-    _coverShadowView.transform = CGAffineTransformMakeRotation(15 * M_PI / 180.0);
 }
 
 #pragma mark - Model
 
 - (void)setModel:(NLCategoryModel *)model {
     _model = model;
-
     _nameLabel.text = model.name;
 
-    // 背景颜色
-    NSString *hex = model.backgroundColorHex ?: @"#1DB954";
-    _containerView.backgroundColor = [self colorFromHexString:hex];
-
-    // 封面
+    // 有封面用封面铺满格子背景，没有则用分类色
     if (model.previewCoverUrl.length > 0) {
         NSString *url = [model.previewCoverUrl stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
         [_coverImageView sd_setImageWithURL:[NSURL URLWithString:url]];
+        _coverImageView.hidden = NO;
+        _coverOverlay.hidden = NO;
+        _containerView.backgroundColor = UIColor.clearColor;
     } else {
         _coverImageView.image = nil;
+        _coverImageView.hidden = YES;
+        _coverOverlay.hidden = YES;
+        NSString *hex = model.backgroundColorHex ?: @"#1DB954";
+        _containerView.backgroundColor = [self colorFromHexString:hex];
     }
 }
 
@@ -119,7 +108,10 @@
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    self.coverImageView.image = nil;
+    _coverImageView.image = nil;
+    _coverImageView.hidden = NO;
+    _coverOverlay.hidden = NO;
+    _containerView.backgroundColor = nil;
 }
 
 @end

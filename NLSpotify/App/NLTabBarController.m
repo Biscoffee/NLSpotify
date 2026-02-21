@@ -29,21 +29,27 @@
                                             image:[UIImage systemImageNamed:@"house"]
                                        identifier:@"Home"
                            viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
-        return [[UINavigationController alloc] initWithRootViewController:[NLHomeViewController new]];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[NLHomeViewController new]];
+        nav.interactivePopGestureRecognizer.enabled = YES;
+        return nav;
     }];
 
     UITab *musicTab = [[UITab alloc] initWithTitle:@"音乐库"
                                              image:[UIImage systemImageNamed:@"music.pages"]
                                         identifier:@"MusicLibrary"
                             viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
-        return [[UINavigationController alloc] initWithRootViewController:[NLMusicViewController new]];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[NLMusicViewController new]];
+        nav.interactivePopGestureRecognizer.enabled = YES;
+        return nav;
     }];
 
     UITab *broadcastTab = [[UITab alloc] initWithTitle:@"广播"
                                                image:[UIImage systemImageNamed:@"waveform.mid"]
                                           identifier:@"broadcast"
                               viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
-        return [[UINavigationController alloc] initWithRootViewController:[NLAdvertiseViewController new]];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[NLAdvertiseViewController new]];
+        nav.interactivePopGestureRecognizer.enabled = YES;
+        return nav;
     }];
 
 //    UITab *createTab = [[UITab alloc] initWithTitle:@"创建"
@@ -58,6 +64,7 @@
     [[UISearchTab alloc] initWithViewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
         NLSearchViewController *searchVC = [[NLSearchViewController alloc] init];
         UINavigationController *navVC = [[UINavigationController alloc] initWithRootViewController:searchVC];
+        navVC.interactivePopGestureRecognizer.enabled = YES;
         return navVC;
     }];
 

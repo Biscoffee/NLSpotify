@@ -8,8 +8,8 @@
 #import <Foundation/Foundation.h>
 
 typedef NS_ENUM(NSInteger, NLHomeSectionStyle) {
-  NLHomeSectionStylePlayListSmall,
-  NLHomeSectionStylePlayListBig,
+  NLHomeSectionStylePlaylist,      // 歌单小卡片
+  NLHomeSectionStyleSingerAlbum,   // 歌手专辑大卡片
   NLHomeSectionStyleRecommend,
   NLHomeSectionStyleSeries,
   NLHomeSectionStyleSingle,

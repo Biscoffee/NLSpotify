@@ -13,11 +13,12 @@
 
 @interface NLPlaylistViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
 
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) NSMutableArray<NLPlaylistModel *> *playlists;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, strong) UILabel *titleLabel;
-
 @end
 
 @implementation NLPlaylistViewController
@@ -35,70 +36,74 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    [self setupUI];
+    self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
+
+    // A. 添加视图（触发 getter）
+    [self.view addSubview:self.scrollView];
+    [self.scrollView addSubview:self.contentView];
+    [self.contentView addSubview:self.titleLabel];
+    [self.contentView addSubview:self.collectionView];
+    [self.view addSubview:self.loadingIndicator];
+
+    // B. 布局视图
+    [self setupConstraints];
+
+    // C. 导航栏 & 数据
     [self setupNavigation];
     [self loadData];
 }
 
-- (void)setupUI {
-    self.view.backgroundColor = [UIColor blackColor];
-
-    // 标题
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.text = self.categoryName;
-    _titleLabel.font = [UIFont boldSystemFontOfSize:24];
-    _titleLabel.textColor = [UIColor whiteColor];
-    [self.view addSubview:_titleLabel];
-
-    // 创建布局
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.scrollDirection = UICollectionViewScrollDirectionVertical;
-    layout.minimumLineSpacing = 16;
-    layout.minimumInteritemSpacing = 16;
-    CGFloat itemWidth = (self.view.bounds.size.width - 48) / 2; // 左右各16，中间间距16
-    layout.itemSize = CGSizeMake(itemWidth, itemWidth + 60); // 高度为宽度+标题和创建者的高度
-
-    // 创建集合视图
-    _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-    _collectionView.dataSource = self;
-    _collectionView.delegate = self;
-    _collectionView.backgroundColor = [UIColor clearColor];
-    [_collectionView registerClass:[NLPlaylistCollectionCell class] forCellWithReuseIdentifier:@"PlaylistCollectionCell"];
-    [self.view addSubview:_collectionView];
-
-    // 加载指示器
-    _loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
-    _loadingIndicator.hidesWhenStopped = YES;
-    [self.view addSubview:_loadingIndicator];
-
-    // 布局
-    [_titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.view.mas_safeAreaLayoutGuideTop).offset(20);
-        make.left.equalTo(self.view).offset(16);
-        make.right.equalTo(self.view).offset(-16);
+- (void)setupConstraints {
+    [self.scrollView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.view);
     }];
 
-    [_collectionView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_titleLabel.mas_bottom).offset(20);
-        make.left.equalTo(self.view).offset(16);
-        make.right.equalTo(self.view).offset(-16);
-        make.bottom.equalTo(self.view);
+    [self.contentView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.scrollView);
+        make.width.equalTo(self.scrollView);
     }];
 
-    [_loadingIndicator mas_makeConstraints:^(MASConstraintMaker *make) {
+    [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.contentView).offset(20);
+        make.left.equalTo(self.contentView).offset(16);
+        make.right.equalTo(self.contentView).offset(-16);
+    }];
+
+    [self.collectionView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.titleLabel.mas_bottom).offset(20);
+        make.left.equalTo(self.contentView).offset(16);
+        make.right.equalTo(self.contentView).offset(-16);
+        make.bottom.equalTo(self.contentView).offset(-24);
+        make.height.mas_equalTo(0);
+    }];
+
+    [self.loadingIndicator mas_makeConstraints:^(MASConstraintMaker *make) {
         make.center.equalTo(self.view);
     }];
 }
 
+- (void)updateCollectionViewHeight {
+    CGFloat h = 0;
+    if (self.playlists.count > 0) {
+        CGFloat itemWidth = (self.view.bounds.size.width - 48) / 2;
+        CGFloat itemHeight = itemWidth + 60;
+        NSInteger rows = (self.playlists.count + 1) / 2;
+        h = rows * itemHeight + (rows - 1) * 16;
+    }
+    [_collectionView mas_updateConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(h);
+    }];
+}
+
 - (void)setupNavigation {
-    // 自定义返回按钮
     UIButton *backButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [backButton setImage:[UIImage systemImageNamed:@"chevron.left"] forState:UIControlStateNormal];
-    [backButton setTintColor:[UIColor whiteColor]];
+    backButton.tintColor = [UIColor labelColor];
     [backButton addTarget:self action:@selector(backButtonTapped) forControlEvents:UIControlEventTouchUpInside];
 
     UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
     self.navigationItem.leftBarButtonItem = backItem;
+    self.navigationController.navigationBar.tintColor = [UIColor labelColor];
 }
 
 - (void)loadData {
@@ -109,6 +114,7 @@
         [weakSelf.loadingIndicator stopAnimating];
         weakSelf.playlists = [playlists mutableCopy];
         [weakSelf.collectionView reloadData];
+        [weakSelf updateCollectionViewHeight];
       if (playlists.count > 0) {
           NLPlaylistModel *first = playlists.firstObject;
 
@@ -143,7 +149,7 @@
 - (void)showEmptyView {
     UILabel *emptyLabel = [[UILabel alloc] init];
     emptyLabel.text = @"暂无歌单数据";
-    emptyLabel.textColor = [UIColor lightGrayColor];
+    emptyLabel.textColor = [UIColor tertiaryLabelColor];
     emptyLabel.textAlignment = NSTextAlignmentCenter;
     emptyLabel.font = [UIFont systemFontOfSize:16];
 
@@ -182,7 +188,6 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     [self.navigationController pushViewController:vc animated:YES];
 }
 
-@end
 /*
 #pragma mark - Navigation
 
@@ -193,3 +198,60 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
 }
 */
 
+#pragma mark - Getters
+
+- (UIScrollView *)scrollView {
+    if (!_scrollView) {
+        _scrollView = [[UIScrollView alloc] init];
+        _scrollView.showsVerticalScrollIndicator = YES;
+        _scrollView.alwaysBounceVertical = YES;
+    }
+    return _scrollView;
+}
+
+- (UIView *)contentView {
+    if (!_contentView) {
+        _contentView = [[UIView alloc] init];
+        _contentView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    }
+    return _contentView;
+}
+
+- (UILabel *)titleLabel {
+    if (!_titleLabel) {
+        _titleLabel = [[UILabel alloc] init];
+        _titleLabel.text = self.categoryName;
+        _titleLabel.font = [UIFont boldSystemFontOfSize:24];
+        _titleLabel.textColor = [UIColor labelColor];
+    }
+    return _titleLabel;
+}
+
+- (UICollectionView *)collectionView {
+    if (!_collectionView) {
+        UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+        layout.scrollDirection = UICollectionViewScrollDirectionVertical;
+        layout.minimumLineSpacing = 16;
+        layout.minimumInteritemSpacing = 16;
+        CGFloat itemWidth = (UIScreen.mainScreen.bounds.size.width - 48) / 2.0;
+        layout.itemSize = CGSizeMake(itemWidth, itemWidth + 60);
+
+        _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+        _collectionView.dataSource = self;
+        _collectionView.delegate = self;
+        _collectionView.scrollEnabled = NO;
+        _collectionView.backgroundColor = [UIColor clearColor];
+        [_collectionView registerClass:[NLPlaylistCollectionCell class] forCellWithReuseIdentifier:@"PlaylistCollectionCell"];
+    }
+    return _collectionView;
+}
+
+- (UIActivityIndicatorView *)loadingIndicator {
+    if (!_loadingIndicator) {
+        _loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        _loadingIndicator.hidesWhenStopped = YES;
+    }
+    return _loadingIndicator;
+}
+
+@end

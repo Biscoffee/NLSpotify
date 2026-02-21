@@ -13,45 +13,22 @@
 
 @implementation NLSearchResultViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = UIColor.blackColor;
+    self.view.backgroundColor = [UIColor systemBackgroundColor];
     self.navigationItem.hidesBackButton = YES;
-
-    [self setupSearchController];
+    self.definesPresentationContext = YES;
+    self.navigationItem.searchController = self.searchController;
+    self.navigationItem.hidesSearchBarWhenScrolling = NO;
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    // 自动弹出键盘
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.searchController.searchBar becomeFirstResponder];
     });
-}
-
-- (void)setupSearchController {
-    // 此时结果页是在自己身上展示，所以 initWithSearchResultsController 为 nil
-    UISearchController *sc = [[UISearchController alloc] initWithSearchResultsController:nil];
-    sc.searchResultsUpdater = self;
-    sc.obscuresBackgroundDuringPresentation = NO;
-    sc.hidesNavigationBarDuringPresentation = NO;
-
-    sc.searchBar.delegate = self;
-    sc.searchBar.placeholder = @"艺人、歌曲、歌词以及更多内容";
-    sc.searchBar.searchBarStyle = UISearchBarStyleMinimal;
-
-    // 关键：显示取消按钮（图2中的“X”）
-    sc.searchBar.showsCancelButton = YES;
-
-    // 自定义取消按钮样式（如果你想要更像 Apple Music 的叉号）
-    // [[UIBarButtonItem appearanceWhenContainedInInstancesOfClasses:@[[UISearchBar class]]] setTitle:@"取消"];
-
-    self.searchController = sc;
-    self.navigationItem.searchController = sc;
-    self.navigationItem.hidesSearchBarWhenScrolling = NO;
-
-    // 解决推入页面时搜索框跳动的问题
-    self.definesPresentationContext = YES;
 }
 
 #pragma mark - UISearchBarDelegate
@@ -69,8 +46,24 @@
 
 - (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
     NSString *searchText = searchController.searchBar.text;
-    // 在这里执行具体的搜索逻辑
     NSLog(@"正在搜索: %@", searchText);
+}
+
+#pragma mark - Getters
+
+- (UISearchController *)searchController {
+    if (!_searchController) {
+        UISearchController *sc = [[UISearchController alloc] initWithSearchResultsController:nil];
+        sc.searchResultsUpdater = self;
+        sc.obscuresBackgroundDuringPresentation = NO;
+        sc.hidesNavigationBarDuringPresentation = NO;
+        sc.searchBar.delegate = self;
+        sc.searchBar.placeholder = @"艺人、歌曲、歌词以及更多内容";
+        sc.searchBar.searchBarStyle = UISearchBarStyleMinimal;
+        sc.searchBar.showsCancelButton = YES;
+        _searchController = sc;
+    }
+    return _searchController;
 }
 
 @end
