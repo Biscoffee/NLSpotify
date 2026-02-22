@@ -99,23 +99,37 @@
         _contentLabel.text = @"";
         return;
     }
+    NLCommentModel *comment = self.comment;
     CGFloat width = [UIScreen mainScreen].bounds.size.width - 74;
     UIFont *font = [UIFont systemFontOfSize:15];
 
-    BOOL needExpand =
-    [NLCommentTextFolder textNeedExpand:self.comment.content
-                                 width:width
-                                  font:font];
-    if (!needExpand) {
-        _contentLabel.text = self.comment.content;
-    } else {
-        if (self.comment.isExpanded) {
-            _contentLabel.attributedText =
-            [NLCommentTextFolder expandedText:self.comment.content font:font];
+    // 文本缓存：第一次计算折叠 / 展开富文本，后续直接复用
+    if (!comment.collapsedAttr && !comment.expandedAttr) {
+        BOOL needExpand =
+        [NLCommentTextFolder textNeedExpand:comment.content
+                                      width:width
+                                       font:font];
+        comment.needExpand = needExpand;
+
+        if (!needExpand) {
+            NSDictionary *attrs = @{
+                NSFontAttributeName : font,
+                NSForegroundColorAttributeName : [UIColor labelColor]
+            };
+            NSString *text = comment.content ?: @"";
+            comment.collapsedAttr = [[NSAttributedString alloc] initWithString:text attributes:attrs];
         } else {
-            _contentLabel.attributedText =
-            [NLCommentTextFolder collapsedText:self.comment.content font:font width:width];
+            comment.collapsedAttr =
+            [NLCommentTextFolder collapsedText:comment.content font:font width:width];
+            comment.expandedAttr =
+            [NLCommentTextFolder expandedText:comment.content font:font];
         }
+    }
+
+    if (!comment.needExpand) {
+        _contentLabel.attributedText = comment.collapsedAttr;
+    } else {
+        _contentLabel.attributedText = comment.isExpanded ? comment.expandedAttr : comment.collapsedAttr;
     }
 }
 

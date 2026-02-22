@@ -23,6 +23,7 @@
 @property (nonatomic, copy) NSString *fullDescText;
 @property (nonatomic, assign, readwrite) BOOL descExpanded;
 
+
 @end
 
 @implementation NLSongListHeaderView
@@ -94,10 +95,8 @@
 - (void)setupConstrains {
     CGFloat coverSide = [UIScreen mainScreen].bounds.size.width - 120;
     if (coverSide > 240) coverSide = 240;
-    // 顶部间距：安全区域顶部 + 导航栏高度(44) + 额外间距(24)
-    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
-    CGFloat navBarHeight = 44.0;
-    CGFloat topInset = statusBarHeight + navBarHeight + 24;
+    // TableView 已用 contentInsetAdjustmentBehavior = Automatic，系统已预留导航栏下方空间，这里只保留封面距 header 顶部的间距
+    CGFloat topInset = 24.0;
     
     [_coverImageView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(self).offset(topInset);

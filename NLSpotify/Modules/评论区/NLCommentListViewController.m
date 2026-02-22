@@ -130,6 +130,11 @@ static const NSInteger kPageSize = 20;
 #pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    NLCommentModel *comment = self.comments[indexPath.row];
+    CGFloat cachedHeight = comment.isExpanded ? comment.expandedHeight : comment.collapsedHeight;
+    if (cachedHeight > 0) {
+        return cachedHeight;
+    }
     return UITableViewAutomaticDimension;
 }
 
@@ -142,6 +147,17 @@ static const NSInteger kPageSize = 20;
     if (indexPath.row == self.comments.count - 3 && self.comments.count < self.total && !self.isLoading) {
         self.currentOffset = self.comments.count;
         [self loadData];
+    }
+
+    // 首次展示时记录实际高度，后续直接使用缓存
+    if (indexPath.row < self.comments.count) {
+        NLCommentModel *comment = self.comments[indexPath.row];
+        CGFloat height = CGRectGetHeight(cell.bounds);
+        if (comment.isExpanded) {
+            comment.expandedHeight = height;
+        } else {
+            comment.collapsedHeight = height;
+        }
     }
 }
 

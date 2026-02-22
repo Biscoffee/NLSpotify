@@ -9,8 +9,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/**
- * 自定义 UISlider，扩大触摸区域但保持视觉上的细线效果
+/*
+ 自定义 UISlider，扩大触摸区域但保持视觉上的细线效果
  */
 @interface NLExpandableTouchSlider : UISlider
 

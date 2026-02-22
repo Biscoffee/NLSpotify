@@ -14,34 +14,29 @@
                   font:(UIFont *)font {
     if (!text || text.length == 0) return NO;
     if (!font) font = [UIFont systemFontOfSize:15];
-    //创建富文本
+    // 创建富文本，TextKit只支持富文本
     NSDictionary *attrs = @{NSFontAttributeName: font};
     NSAttributedString *attStr = [[NSAttributedString alloc] initWithString:text attributes:attrs];
 
-    NSTextStorage *textStorage = [[NSTextStorage alloc] initWithAttributedString:attStr];//textKit组件，
+    NSTextStorage *textStorage = [[NSTextStorage alloc] initWithAttributedString:attStr];//textKit组件，顾名思义储存文本的
     NSLayoutManager *layoutManager = [[NSLayoutManager alloc] init];
     NSTextContainer *textContainer =
-    [[NSTextContainer alloc] initWithSize:CGSizeMake(width, CGFLOAT_MAX)];
+    [[NSTextContainer alloc] initWithSize:CGSizeMake(width, CGFLOAT_MAX)];  //文本显示区域无线高度，因为你要看他有没有三行
 
-    textContainer.lineFragmentPadding = 0;
-
+    textContainer.lineFragmentPadding = 0;  //  TextKit左右默认5的空间，如果不关掉行数会有误差
     [textStorage addLayoutManager:layoutManager];
     [layoutManager addTextContainer:textContainer];
+
 
     [layoutManager glyphRangeForTextContainer:textContainer];
 
     NSUInteger glyphCount = layoutManager.numberOfGlyphs;
-
     NSUInteger lineCount = 0;
     NSUInteger index = 0;
-
     while (index < glyphCount) {
-
         NSRange lineRange;
-
         [layoutManager lineFragmentRectForGlyphAtIndex:index
                                         effectiveRange:&lineRange];
-
         index = NSMaxRange(lineRange);
 
         lineCount++;
@@ -59,9 +54,7 @@
     if (!font) font = [UIFont systemFontOfSize:15];
     
     NSString *suffix = @"...展开";
-
     NSDictionary *attrs = @{NSFontAttributeName:font};
-
     NSAttributedString *attrStr =
     [[NSAttributedString alloc] initWithString:text attributes:attrs];
 
