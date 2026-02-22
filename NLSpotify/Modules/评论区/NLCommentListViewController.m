@@ -22,6 +22,7 @@ static const NSInteger kPageSize = 20;
 @property (nonatomic, assign) NSInteger currentOffset;
 
 @property (nonatomic, assign) BOOL isLoading;
+@property (nonatomic, assign) BOOL hasLoadedOnce; // 至少成功加载过一回，用于区分「未加载」和「已加载完」
 @end
 
 @implementation NLCommentListViewController
@@ -69,6 +70,7 @@ static const NSInteger kPageSize = 20;
                                           before:nil
                                          success:^(NSArray<NLCommentModel *> *comments, NSInteger total) {
         w.isLoading = NO;
+        w.hasLoadedOnce = YES;
         w.total = total;
         if (w.currentOffset == 0) {
             [w.comments removeAllObjects];
@@ -84,8 +86,9 @@ static const NSInteger kPageSize = 20;
 }
 
 - (void)updateLoadingFooter:(BOOL)loading {
+    CGFloat width = CGRectGetWidth(self.view.bounds);
     if (loading && self.comments.count < self.total) {
-        UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.view.bounds), 44)];
+        UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 44)];
         UIActivityIndicatorView *indicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
         indicator.translatesAutoresizingMaskIntoConstraints = NO;
         [footerView addSubview:indicator];
@@ -93,6 +96,19 @@ static const NSInteger kPageSize = 20;
             make.center.equalTo(footerView);
         }];
         [indicator startAnimating];
+        self.tableView.tableFooterView = footerView;
+    } else if (self.hasLoadedOnce && self.comments.count >= self.total && self.total >= 0) {
+        // 已经加载过且没有更多了，显示「没有更多评论」
+        UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 44)];
+        UILabel *label = [[UILabel alloc] init];
+        label.text = @"没有更多评论";
+        label.font = [UIFont systemFontOfSize:14];
+        label.textColor = [UIColor tertiaryLabelColor];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        [footerView addSubview:label];
+        [label mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.center.equalTo(footerView);
+        }];
         self.tableView.tableFooterView = footerView;
     } else {
         self.tableView.tableFooterView = [UIView new];

@@ -26,6 +26,10 @@
                              before:(NSNumber *)before
                             success:(void (^)(NSArray<NLCommentModel *> * _Nonnull, NSInteger))success
                             failure:(void (^)(NSError * _Nonnull))failure {
+    if (resourceId <= 0) {
+        if (failure) failure([NSError errorWithDomain:@"NLCommentService" code:400 userInfo:@{NSLocalizedDescriptionKey: @"无效的资源 ID"}]);
+        return;
+    }
     NSString *path = [self pathForResourceType:type];
     NSMutableDictionary *params = [NSMutableDictionary dictionary];
     params[@"id"] = @(resourceId);
@@ -65,6 +69,10 @@
                                          time:(NSNumber *)time
                                       success:(void (^)(NSArray<NLCommentModel *> * _Nonnull))success
                                       failure:(void (^)(NSError * _Nonnull))failure {
+    if (resourceId <= 0 || parentCommentId <= 0) {
+        if (failure) failure([NSError errorWithDomain:@"NLCommentService" code:400 userInfo:@{NSLocalizedDescriptionKey: @"无效的资源或评论 ID"}]);
+        return;
+    }
     NSMutableDictionary *params = [NSMutableDictionary dictionary];
     params[@"parentCommentId"] = @(parentCommentId);
     params[@"id"] = @(resourceId);

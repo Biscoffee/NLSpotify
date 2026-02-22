@@ -15,7 +15,10 @@
 + (void)fetchAlbumDetailWithId:(NSInteger)albumId
                     completion:(void (^)(NLHeaderModel *header,
                                          NSArray<NLListCellModel *> *songs))completion {
-
+    if (albumId <= 0) {
+        if (completion) completion(nil, @[]);
+        return;
+    }
     [[NetWorkManager sharedManager] GET:@"/album" parameters:@{ @"id": @(albumId) } success:^(id responseObject) {
 
         NSDictionary *json = (NSDictionary *)responseObject;

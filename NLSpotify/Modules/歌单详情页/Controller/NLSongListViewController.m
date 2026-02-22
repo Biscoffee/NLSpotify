@@ -16,6 +16,7 @@
 #import "NLSongService.h"
 #import "NLCommentListViewController.h"
 #import <Masonry/Masonry.h>
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @interface NLSongListViewController () <UITableViewDelegate, UITableViewDataSource, NLSongListHeaderViewDelegate>
 
@@ -58,6 +59,17 @@
     [self setupConstraints];
     [self setupNavigation];
     [self requestData];
+
+    __weak typeof(self) weakSelf = self;
+    [[NLPlayerManager sharedManager].songSignal subscribeNext:^(NLSong * _Nullable song) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) [strongSelf scrollToCurrentPlayingSong];
+    }];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self scrollToCurrentPlayingSong];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -178,6 +190,24 @@
 
     [self setupTableHeader];
     [self.tableView reloadData];
+    [self scrollToCurrentPlayingSong];
+}
+
+- (void)scrollToCurrentPlayingSong {
+    if (self.songs.count == 0) return;
+    NLSong *currentSong = [NLPlayerManager sharedManager].currentSong;
+    if (!currentSong || !currentSong.songId.length) return;
+    NSString *currentId = currentSong.songId;
+    NSInteger foundIndex = -1;
+    for (NSInteger i = 0; i < self.songs.count; i++) {
+        if ([[NSString stringWithFormat:@"%ld", (long)self.songs[i].songId] isEqualToString:currentId]) {
+            foundIndex = i;
+            break;
+        }
+    }
+    if (foundIndex < 0) return;
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:foundIndex inSection:0];
+    [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
 }
 
 #pragma mark - UITableViewDataSource
@@ -199,7 +229,7 @@
 
 #pragma mark - Playback
 
-/// 将 self.songs 转为 NLSong 数组，可选是否打乱顺序
+// 将 self.songs 转为 NLSong 数组，可选是否打乱顺序
 - (NSMutableArray<NLSong *> *)buildSongListShuffled:(BOOL)shuffle {
     NSMutableArray<NLSong *> *list = [NSMutableArray array];
     for (NLListCellModel *model in self.songs) {
@@ -215,7 +245,7 @@
     return list;
 }
 
-/// 拉取指定位置的歌曲播放 URL，然后以该首为起点播放列表
+// 拉取指定位置的歌曲播放 URL，然后以该首为起点播放列表
 - (void)playSongList:(NSMutableArray<NLSong *> *)songList startIndex:(NSInteger)index {
     if (songList.count == 0 || index < 0 || index >= songList.count) return;
     
@@ -278,7 +308,7 @@
         _tableView.separatorColor = [UIColor separatorColor];
         _tableView.separatorInset = UIEdgeInsetsMake(0, 72, 0, 0);
         _tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
-        // 底部留出空间，避免被 tabBar 遮挡（初始值，会在 viewDidLayoutSubviews 中更新）
+
         _tableView.contentInset = UIEdgeInsetsMake(0, 0, 42, 0); // 约为 tabBar 高度的一半，避免挡住内容
         _tableView.scrollIndicatorInsets = _tableView.contentInset;
         [_tableView registerClass:[NLSongListCell class] forCellReuseIdentifier:@"NLSongCell"];

@@ -1,5 +1,5 @@
 //
-//  NLPlayListViewController.h
+//  NLPlayListsViewController.h
 //  NLSpotify
 //
 //  Created by 吴桐 on 2026/1/17.
@@ -9,7 +9,7 @@
 #import "NLCategoryModel.h"
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NLPlaylistViewController : UIViewController
+@interface NLPlayListsViewController : UIViewController
 
 @property (nonatomic, copy) NSString *categoryName;
 @property (nonatomic, copy) NSString *categoryId;

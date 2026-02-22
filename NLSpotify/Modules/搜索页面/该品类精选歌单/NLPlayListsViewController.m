@@ -1,17 +1,17 @@
 //
-//  NLPlayListViewController.m
+//  NLPlayListsViewController.m
 //  NLSpotify
 //
 //  Created by 吴桐 on 2026/1/17.
 //
-#import "NLPlaylistViewController.h"
+#import "NLPlayListsViewController.h"
 #import "NLPlaylistService.h"
 #import "NLPlaylistCollectionCell.h"
 #import <Masonry/Masonry.h>
 #import "NLCategoryModel.h"
 #import "NLSongListViewController.h"
 
-@interface NLPlaylistViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
+@interface NLPlayListsViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
 
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
@@ -21,7 +21,7 @@
 @property (nonatomic, strong) UILabel *titleLabel;
 @end
 
-@implementation NLPlaylistViewController
+@implementation NLPlayListsViewController
 
 - (instancetype)initWithCategoryModel:(NLCategoryModel *)model {
     self = [super init];
@@ -38,17 +38,14 @@
 
     self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
 
-    // A. 添加视图（触发 getter）
     [self.view addSubview:self.scrollView];
     [self.scrollView addSubview:self.contentView];
     [self.contentView addSubview:self.titleLabel];
     [self.contentView addSubview:self.collectionView];
     [self.view addSubview:self.loadingIndicator];
 
-    // B. 布局视图
     [self setupConstraints];
 
-    // C. 导航栏 & 数据
     [self setupNavigation];
     [self loadData];
 }
@@ -117,8 +114,6 @@
         [weakSelf updateCollectionViewHeight];
       if (playlists.count > 0) {
           NLPlaylistModel *first = playlists.firstObject;
-
-          // 回写到 CategoryModel（你需要在初始化 VC 时传 model，而不是只传 name）
           self.categoryModel.previewCoverUrl = first.coverImgUrl;
       }
         if (playlists.count == 0) {
@@ -134,13 +129,10 @@
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"错误"
                                                                    message:errorMessage
                                                             preferredStyle:UIAlertControllerStyleAlert];
-
     UIAlertAction *retry = [UIAlertAction actionWithTitle:@"重试" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         [self loadData];
     }];
-
     UIAlertAction *cancel = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil];
-
     [alert addAction:retry];
     [alert addAction:cancel];
     [self presentViewController:alert animated:YES completion:nil];
@@ -152,7 +144,6 @@
     emptyLabel.textColor = [UIColor tertiaryLabelColor];
     emptyLabel.textAlignment = NSTextAlignmentCenter;
     emptyLabel.font = [UIFont systemFontOfSize:16];
-
     self.collectionView.backgroundView = emptyLabel;
 }
 
@@ -174,29 +165,11 @@
 
 #pragma mark - UICollectionViewDelegate
 
-- (void)collectionView:(UICollectionView *)collectionView
-didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     NLPlaylistModel *playlist = self.playlists[indexPath.item];
-
-    NLSongListViewController *vc =
-        [[NLSongListViewController alloc]
-            initWithId:playlist.playlistId
-            type:NLSongListTypePlaylist
-            name:playlist.name];
-
+    NLSongListViewController *vc = [[NLSongListViewController alloc] initWithId:playlist.playlistId type:NLSongListTypePlaylist name:playlist.name];
     [self.navigationController pushViewController:vc animated:YES];
 }
-
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
 
 #pragma mark - Getters
 
@@ -235,7 +208,6 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
         layout.minimumInteritemSpacing = 16;
         CGFloat itemWidth = (UIScreen.mainScreen.bounds.size.width - 48) / 2.0;
         layout.itemSize = CGSizeMake(itemWidth, itemWidth + 60);
-
         _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
         _collectionView.dataSource = self;
         _collectionView.delegate = self;

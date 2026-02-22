@@ -21,6 +21,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 @property (nonatomic, assign, readwrite) NLPlaybackState playbackState;
 @property (nonatomic, strong, readwrite) NSArray<NLSong *> *playlist;
 @property (nonatomic, assign, readwrite) NSInteger currentIndex;
+@property (nonatomic, assign, readwrite) NLPlayMode playMode;
 @property (nonatomic, strong) AVPlayer *player;   //音乐播放器
 @property (nonatomic, strong) RACSubject<NSNumber *> *playbackStateSubject;
 @property (nonatomic, strong) RACSubject<NLSong *> *songSubject;
@@ -28,6 +29,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 
 @property (nonatomic, strong) id timeObserver;
 @property (nonatomic, weak) AVPlayerItem *observedItem; // 当前被 KVO 的 item，用于移除观察
+@property (nonatomic, strong) id endTimeObserver;       // 播放结束观察
 @end
 
 @implementation NLPlayerManager
@@ -47,6 +49,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 - (instancetype)init {
     if (self = [super init]) {
         _volume = 0.8f;
+        _playMode = NLPlayModeListLoop;
         _playbackStateSubject = [RACSubject subject];
         _songSubject = [RACSubject subject];
         _progressSubject = [RACSubject subject];
@@ -125,6 +128,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     }
     
     [self observeCurrentItemForReady:item];
+    [self observeCurrentItemForEnd:item];
     self.player.volume = self.volume;
     [self setPlaybackState:NLPlaybackStatePlaying];
     [self.player play];
@@ -173,64 +177,82 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     [self setPlaybackState:NLPlaybackStateIdle];
 }
 
-//两个孪生bro方法
-- (void)playNext {
-    if (!self.playlist || self.playlist.count == 0) {
-        return;
-    }
-    NSInteger nextIndex = self.currentIndex + 1;
-    if (nextIndex >= self.playlist.count) {
-        nextIndex = 0; // 循环播放
-    }
+- (void)setPlayMode:(NLPlayMode)playMode {
+    _playMode = playMode;
+}
 
-    NLSong *nextSong = self.playlist[nextIndex];
-    if (nextSong.playURL) {
-        // 如果已经有播放URL，直接播放
-        [self playSongAtIndex:nextIndex];
-    } else {
-        // 如果没有播放URL，需要先获取
-        [self setPlaybackState:NLPlaybackStateLoading];
-        [[NLSongService sharedService] fetchPlayableURLWithSongId:nextSong.songId
-                                                         success:^(NSURL *playURL) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                nextSong.playURL = playURL;
-                [self playSongAtIndex:nextIndex];
-            });
-        } failure:^(NSError *error) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                NSLog(@"获取播放URL失败: %@", error.localizedDescription);
-                [self setPlaybackState:NLPlaybackStateError];
-            });
-        }];
+/// 根据播放模式计算下一首的索引
+- (NSInteger)indexForNextInMode:(NLPlayMode)mode {
+    if (!self.playlist || self.playlist.count == 0) return -1;
+    switch (mode) {
+        case NLPlayModeSingleLoop:
+            return self.currentIndex; // 单曲循环：保持当前
+        case NLPlayModeListLoop: {
+            NSInteger next = self.currentIndex + 1;
+            return next >= (NSInteger)self.playlist.count ? 0 : next;
+        }
+        case NLPlayModeRandom: {
+            if (self.playlist.count <= 1) return self.currentIndex;
+            NSInteger r;
+            do {
+                r = arc4random_uniform((uint32_t)self.playlist.count);
+            } while (r == self.currentIndex);
+            return r;
+        }
     }
 }
+
+/// 根据播放模式计算上一首的索引
+- (NSInteger)indexForPreviousInMode:(NLPlayMode)mode {
+    if (!self.playlist || self.playlist.count == 0) return -1;
+    switch (mode) {
+        case NLPlayModeSingleLoop:
+            return self.currentIndex; // 单曲循环：保持当前
+        case NLPlayModeListLoop: {
+            NSInteger prev = self.currentIndex - 1;
+            return prev < 0 ? (NSInteger)self.playlist.count - 1 : prev;
+        }
+        case NLPlayModeRandom: {
+            if (self.playlist.count <= 1) return self.currentIndex;
+            NSInteger r;
+            do {
+                r = arc4random_uniform((uint32_t)self.playlist.count);
+            } while (r == self.currentIndex);
+            return r;
+        }
+    }
+}
+
+- (void)playNext {
+    NSInteger idx = [self indexForNextInMode:self.playMode];
+    if (idx < 0) return;
+    [self playSongAtIndexIfNeeded:idx];
+}
+
 - (void)playPrevious {
-    if (!self.playlist || self.playlist.count == 0) {
-        return;
-    }
+    NSInteger idx = [self indexForPreviousInMode:self.playMode];
+    if (idx < 0) return;
+    [self playSongAtIndexIfNeeded:idx];
+}
 
-    NSInteger prevIndex = self.currentIndex - 1;
-    if (prevIndex < 0) {
-        prevIndex = self.playlist.count - 1; // 循环播放
-    }
-
-    NLSong *prevSong = self.playlist[prevIndex];
-    if (prevSong.playURL) {
-        // 如果已经有播放URL，直接播放
-        [self playSongAtIndex:prevIndex];
+- (void)playSongAtIndexIfNeeded:(NSInteger)index {
+    if (index < 0 || index >= (NSInteger)self.playlist.count) return;
+    NLSong *song = self.playlist[index];
+    if (song.playURL) {
+        [self playSongAtIndex:index];
     } else {
-        // 如果没有播放URL，需要先获取
         [self setPlaybackState:NLPlaybackStateLoading];
-        [[NLSongService sharedService] fetchPlayableURLWithSongId:prevSong.songId
+        __weak typeof(self) weakSelf = self;
+        [[NLSongService sharedService] fetchPlayableURLWithSongId:song.songId
                                                          success:^(NSURL *playURL) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                prevSong.playURL = playURL;
-                [self playSongAtIndex:prevIndex];
+                song.playURL = playURL;
+                [weakSelf playSongAtIndex:index];
             });
         } failure:^(NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 NSLog(@"获取播放URL失败: %@", error.localizedDescription);
-                [self setPlaybackState:NLPlaybackStateError];
+                [weakSelf setPlaybackState:NLPlaybackStateError];
             });
         }];
     }
@@ -245,11 +267,28 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     self.currentSong = song;
     [self postSongChangedNotification];
 
-    if (!song.playURL) {
-        [self setPlaybackState:NLPlaybackStateError];
+    if (song.playURL) {
+        [self playWithURL:song.playURL];
         return;
     }
-    [self playWithURL:song.playURL];
+    [self setPlaybackState:NLPlaybackStateLoading];
+    __weak typeof(self) weakSelf = self;
+    [[NLSongService sharedService] fetchPlayableURLWithSongId:song.songId
+                                                     success:^(NSURL *playURL) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.currentIndex != index) return;
+            song.playURL = playURL;
+            [strongSelf playWithURL:playURL];
+        });
+    } failure:^(NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            NSLog(@"获取播放URL失败: %@", error.localizedDescription);
+            [strongSelf setPlaybackState:NLPlaybackStateError];
+        });
+    }];
 }
 
 #pragma mark - 进度和音量
@@ -339,6 +378,41 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
                                      context:kPlayerCurrentItemStatusContext];
         } @catch (NSException *exception) {}
         self.observedItem = nil;
+    }
+    if (self.endTimeObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.endTimeObserver];
+        self.endTimeObserver = nil;
+    }
+}
+
+- (void)observeCurrentItemForEnd:(AVPlayerItem *)item {
+    if (!item) return;
+    if (self.endTimeObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.endTimeObserver];
+        self.endTimeObserver = nil;
+    }
+    __weak typeof(self) weakSelf = self;
+    self.endTimeObserver = [[NSNotificationCenter defaultCenter]
+        addObserverForName:AVPlayerItemDidPlayToEndTimeNotification
+                    object:item
+                     queue:[NSOperationQueue mainQueue]
+                usingBlock:^(NSNotification * _Nonnull note) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf handleCurrentItemDidPlayToEnd];
+    }];
+}
+
+- (void)handleCurrentItemDidPlayToEnd {
+    switch (self.playMode) {
+        case NLPlayModeSingleLoop:
+            [self.player seekToTime:kCMTimeZero];
+            [self.player play];
+            break;
+        case NLPlayModeListLoop:
+        case NLPlayModeRandom:
+            [self playNext];
+            break;
     }
 }
 

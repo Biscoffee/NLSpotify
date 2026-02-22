@@ -59,88 +59,66 @@
 //                   name:NLPlayerProgressDidChangeNotification object:nil];
         NLPlayerManager *manager = NLPlayerManager.sharedManager;
         @weakify(self);
-
-        // 1️⃣ 歌曲变化
+    // 等价于__weak typeof(self) weakSelf = self;
+    //  歌曲信息变化
         [manager.songSignal subscribeNext:^(NLSong *song) {
             @strongify(self);
             if (!song) return;
-
             [self.playerView updateTitle:song.title artist:song.artist];
             [self.playerView updateCoverURL:song.coverURL];
-
             [self.playerView updateProgress:0];
             [self.playerView updateCurrentTime:0 totalTime:manager.totalTime];
+            if (self.playerView.isQueuePanelVisible) {
+                [self.playerView reloadQueue];
+            }
         }];
 
-        // 2️⃣ 播放状态
+    //  播放状态变化
         [manager.playbackStateSignal subscribeNext:^(NSNumber *stateNum) {
             @strongify(self);
             BOOL playing = stateNum.integerValue == NLPlaybackStatePlaying;
             [self.playerView updatePlayState:playing];
         }];
 
-        // 3️⃣ 播放进度
+    // 播放进度
         [manager.progressSignal subscribeNext:^(NSNumber *progressNum) {
             @strongify(self);
             if (self.playerView.isTrackingProgress) return;
 
             float progress = progressNum.floatValue;
             [self.playerView updateProgress:progress];
-
             [self.playerView updateCurrentTime:manager.currentTime
                                      totalTime:manager.totalTime];
         }];
 }
 
-#pragma mark - UI Update
 
 - (void)refreshUI {
     NLSong *song = NLPlayerManager.sharedManager.currentSong;
     if (!song) {
-        // 如果没有歌曲，显示默认状态
-        [self.playerView updateTitle:@"未播放" artist:@""];
+        [self.playerView updateTitle:@"未在播放" artist:@""];
         [self.playerView updateCoverURL:nil];
         [self.playerView updateProgress:0];
         [self.playerView updateCurrentTime:0 totalTime:0];
         return;
     }
-
     [self.playerView updateTitle:song.title artist:song.artist];
     [self.playerView updateCoverURL:song.coverURL];
-    
-    // 更新进度和时间
     float progress = NLPlayerManager.sharedManager.currentProgress;
     [self.playerView updateProgress:progress];
-    
-    // 获取总时长和当前时间
+
     NSTimeInterval currentTime = NLPlayerManager.sharedManager.currentTime;
     NSTimeInterval totalTime = NLPlayerManager.sharedManager.totalTime;
     [self.playerView updateCurrentTime:currentTime totalTime:totalTime];
     
     [self.playerView updateVolume:NLPlayerManager.sharedManager.volume];
-    [self refreshPlayState];
-}
-
-- (void)refreshPlayState {
     BOOL playing = NLPlayerManager.sharedManager.playbackState == NLPlaybackStatePlaying;
     [self.playerView updatePlayState:playing];
+    [self.playerView updatePlayMode:NLPlayerManager.sharedManager.playMode];
 }
 
-//- (void)playerProgressDidChange:(NSNotification *)notification {
-//    if (self.playerView.isTrackingProgress) return;
-//
-//    NSNumber *progressNum = notification.object;
-//    if (progressNum) {
-//        [self.playerView updateProgress:progressNum.floatValue];
-//    }
-//    
-//    // 同时更新时间显示
-//    NSTimeInterval currentTime = NLPlayerManager.sharedManager.currentTime;
-//    NSTimeInterval totalTime = NLPlayerManager.sharedManager.totalTime;
-//    [self.playerView updateCurrentTime:currentTime totalTime:totalTime];
-//}
 
-#pragma mark - View Delegate
+#pragma mark -  Delegate
 
 - (void)musicPlayerViewDidTapClose:(NLMusicPlayerView *)view {
     [self dismissViewControllerAnimated:YES completion:nil];
@@ -175,6 +153,28 @@
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:commentVC];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)musicPlayerViewDidTapPlaylist:(NLMusicPlayerView *)view {
+    [view setQueuePanelVisible:!view.isQueuePanelVisible animated:YES];
+}
+
+- (NSArray<NLSong *> *)musicPlayerViewPlaylist:(NLMusicPlayerView *)view {
+    return NLPlayerManager.sharedManager.playlist ?: @[];
+}
+
+- (NSInteger)musicPlayerViewCurrentIndex:(NLMusicPlayerView *)view {
+    return NLPlayerManager.sharedManager.currentIndex;
+}
+
+- (void)musicPlayerView:(NLMusicPlayerView *)view didSelectSongAtIndex:(NSInteger)index {
+    [[NLPlayerManager sharedManager] playSongAtIndex:index];
+    [view reloadQueue];
+}
+
+- (void)musicPlayerView:(NLMusicPlayerView *)view didChangePlayMode:(NLPlayMode)playMode {
+    [view updatePlayMode:playMode];
+    [NLPlayerManager.sharedManager setPlayMode:playMode];
 }
 
 #pragma mark - UIGestureRecognizerDelegate

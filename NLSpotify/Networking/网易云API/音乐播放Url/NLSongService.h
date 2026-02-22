@@ -19,9 +19,8 @@ typedef void(^SongFetchFailure)(NSError *error);
 + (instancetype)sharedService;
 
 - (void)fetchPlayableURLWithSongId:(NSString *)songId
-                         success:(SongURLFetchSuccess)success
+                           success:(SongURLFetchSuccess)success
                            failure:(SongFetchFailure)failure;
-
 
 @end
 

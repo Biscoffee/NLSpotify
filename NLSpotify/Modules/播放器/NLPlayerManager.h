@@ -19,6 +19,12 @@ typedef NS_ENUM(NSUInteger, NLPlaybackState) {
     NLPlaybackStateError
 };
 
+typedef NS_ENUM(NSInteger, NLPlayMode) {
+    NLPlayModeListLoop,    // 列表循环
+    NLPlayModeSingleLoop,  // 单曲循环
+    NLPlayModeRandom       // 随机播放
+};
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NLPlayerManager : NSObject
@@ -33,7 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readonly) NSTimeInterval currentTime;
 @property (nonatomic, assign, readonly) NSTimeInterval totalTime;
 @property (nonatomic, assign, readonly) NSInteger currentIndex;
-
+@property (nonatomic, assign, readonly) NLPlayMode playMode;
 
 // 播放状态（Playing / Paused / Loading）
 @property (nonatomic, strong, readonly) RACSignal<NSNumber *> *playbackStateSignal;
@@ -54,6 +60,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)stop;
 - (void)playNext;
 - (void)playPrevious;
+- (void)playSongAtIndex:(NSInteger)index;
+- (void)setPlayMode:(NLPlayMode)playMode;
 - (void)seekToProgress:(float)progress;
 
 // Audio Session

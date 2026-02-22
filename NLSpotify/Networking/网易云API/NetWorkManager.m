@@ -38,6 +38,10 @@ static NSString * const kBaseURL = @"https://1390963969-2g6ivueiij.ap-guangzhou.
     [self.sessionManager GET:url parameters:params headers:nil progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
         if (success) success(responseObject);
     } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+        if (httpResponse) {
+            NSLog(@"[NetWork] GET 失败 statusCode=%ld path=%@ params=%@", (long)httpResponse.statusCode, path, params ?: @{});
+        }
         if (failure) failure(error);
     }];
 }
@@ -47,6 +51,10 @@ static NSString * const kBaseURL = @"https://1390963969-2g6ivueiij.ap-guangzhou.
     [self.sessionManager POST:url parameters:params headers:nil progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
         if (success) success(responseObject);
     } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+        if (httpResponse) {
+            NSLog(@"[NetWork] POST 失败 statusCode=%ld path=%@ params=%@", (long)httpResponse.statusCode, path, params ?: @{});
+        }
         if(failure) failure(error);
     }];
 }

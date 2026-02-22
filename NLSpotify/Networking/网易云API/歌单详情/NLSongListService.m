@@ -7,67 +7,88 @@
 
 #import "NLSongListService.h"
 #import "NLListCellModel.h"
+#import "NLHeaderModel.h"
+#import "NetWorkManager.h"
 
 @implementation NLSongListService
 
 + (void)fetchPlayListDetailWithId:(NSInteger)playlistId
                        completion:(void (^)(NLHeaderModel *,
                                             NSArray<NLListCellModel *> *))completion {
+    if (playlistId <= 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(nil, @[]);
+        });
+        return;
+    }
 
-    NSString *urlStr =
-    [NSString stringWithFormat:
-     @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com/playlist/detail?id=%ld&offset=3",
-     playlistId];
-
-    NSURL *url = [NSURL URLWithString:urlStr];
-
-    [[[NSURLSession sharedSession] dataTaskWithURL:url
-                                 completionHandler:^(NSData *data,
-                                                     NSURLResponse *response,
-                                                     NSError *error) {
-
-        if (!data || error) return;
-
-        NSDictionary *json =
-        [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-
+    NSDictionary *params = @{ @"id": @(playlistId), @"offset": @0 };
+    [[NetWorkManager sharedManager] GET:@"/playlist/detail"
+                            parameters:params
+                               success:^(id _Nullable responseObject) {
+        if (![responseObject isKindOfClass:[NSDictionary class]]) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, @[]);
+            });
+            return;
+        }
+        NSDictionary *json = (NSDictionary *)responseObject;
+        NSInteger code = [json[@"code"] integerValue];
+        if (code != 200) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, @[]);
+            });
+            return;
+        }
         NSDictionary *playlistDict = json[@"playlist"];
+        if (![playlistDict isKindOfClass:[NSDictionary class]]) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, @[]);
+            });
+            return;
+        }
 
         NLHeaderModel *playlist = [[NLHeaderModel alloc] init];
         playlist.playlistId = [playlistDict[@"id"] integerValue];
         playlist.name = playlistDict[@"name"];
         playlist.coverUrl = playlistDict[@"coverImgUrl"];
-        playlist.desc = playlistDict[@"description"];
+        playlist.desc = playlistDict[@"description"] ?: @"";
 
         NSDictionary *creator = playlistDict[@"creator"];
-        playlist.creatorName = creator[@"nickname"];
-        playlist.creatorAvatar = creator[@"avatarUrl"];
+        if ([creator isKindOfClass:[NSDictionary class]]) {
+            playlist.creatorName = creator[@"nickname"];
+            playlist.creatorAvatar = creator[@"avatarUrl"];
+        }
 
         NSMutableArray *songs = [NSMutableArray array];
-        for (NSDictionary *dict in playlistDict[@"tracks"]) {
-
-            NLListCellModel *song = [[NLListCellModel alloc] init];
-            song.songId = [dict[@"id"] integerValue];
-            song.name = dict[@"name"];
-            song.duration = [dict[@"dt"] integerValue];
-
-            NSArray *artists = dict[@"ar"];
-            if (artists.count > 0) {
-                song.artistName = artists.firstObject[@"name"];
+        NSArray *tracks = playlistDict[@"tracks"];
+        if ([tracks isKindOfClass:[NSArray class]]) {
+            for (NSDictionary *dict in tracks) {
+                NLListCellModel *song = [[NLListCellModel alloc] init];
+                song.songId = [dict[@"id"] integerValue];
+                song.name = dict[@"name"];
+                song.duration = [dict[@"dt"] integerValue];
+                NSArray *artists = dict[@"ar"];
+                if ([artists isKindOfClass:[NSArray class]] && artists.count > 0) {
+                    song.artistName = artists.firstObject[@"name"];
+                }
+                NSDictionary *album = dict[@"al"];
+                if ([album isKindOfClass:[NSDictionary class]]) {
+                    song.albumName = album[@"name"];
+                    song.coverUrl = album[@"picUrl"];
+                }
+                [songs addObject:song];
             }
-
-            NSDictionary *album = dict[@"al"];
-            song.albumName = album[@"name"];
-            song.coverUrl = album[@"picUrl"];
-
-            [songs addObject:song];
         }
 
         dispatch_async(dispatch_get_main_queue(), ^{
-            completion(playlist, songs);
+            if (completion) completion(playlist, [songs copy]);
         });
-
-    }] resume];
+    } failure:^(NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(nil, @[]);
+        });
+    }];
 }
 
 @end

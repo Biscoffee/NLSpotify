@@ -6,19 +6,11 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "NLPlayerManager.h"
 
-
-@class NLMusicPlayerView;
-
-typedef NS_ENUM(NSInteger, NLPlayMode) {
-    NLPlayModeListLoop,    // 列表循环
-    NLPlayModeSingleLoop,  // 单曲循环
-    NLPlayModeRandom       // 随机播放
-};
+@class NLMusicPlayerView, NLSong;
 
 NS_ASSUME_NONNULL_BEGIN
-
-@class NLMusicPlayerView;
 
 @protocol NLMusicPlayerViewDelegate <NSObject>
 
@@ -33,18 +25,25 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)musicPlayerView:(NLMusicPlayerView *)view didChangePlayMode:(NLPlayMode)playMode;
 - (void)musicPlayerViewDidTapPlaylist:(NLMusicPlayerView *)view;
 
+// 播放队列数据
+- (NSArray<NLSong *> *)musicPlayerViewPlaylist:(NLMusicPlayerView *)view;
+- (NSInteger)musicPlayerViewCurrentIndex:(NLMusicPlayerView *)view;
+- (void)musicPlayerView:(NLMusicPlayerView *)view didSelectSongAtIndex:(NSInteger)index;
+
 @end
 
 @interface NLMusicPlayerView : UIView
 
 @property (nonatomic, weak) id<NLMusicPlayerViewDelegate> delegate;
 @property (nonatomic, readonly) BOOL isTrackingProgress;
-@property (nonatomic, assign) CGFloat coverScaleProgress;
-@property (nonatomic, assign) CGFloat dismissProgress; // 下滑进度 0.0-1.0
 
-// 暴露 slider 用于手势识别器
+@property (nonatomic, assign) CGFloat coverScaleProgress;
+@property (nonatomic, assign) CGFloat dismissProgress;
+
 @property (nonatomic, strong, readonly) UISlider *progressSlider;
 @property (nonatomic, strong, readonly) UISlider *volumeSlider;
+
+
 
 - (void)updateTitle:(NSString *)title artist:(NSString *)artist;
 - (void)updateCoverURL:(NSURL *)url;
@@ -52,6 +51,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateCurrentTime:(NSTimeInterval)currentTime totalTime:(NSTimeInterval)totalTime;
 - (void)updateVolume:(float)volume;
 - (void)updatePlayState:(BOOL)isPlaying;
+- (void)updatePlayMode:(NLPlayMode)playMode;
+
+// 播放队列面板（在进度条上方，可独立上下滑动）
+- (void)setQueuePanelVisible:(BOOL)visible animated:(BOOL)animated;
+@property (nonatomic, assign, readonly) BOOL isQueuePanelVisible;
+- (void)reloadQueue;
 
 @end
 

@@ -10,7 +10,7 @@
 #import "NLCategoryCell.h"
 #import "NLSearchAdBannerView.h"
 #import <Masonry/Masonry.h>
-#import "NLPlaylistViewController.h"
+#import "NLPlayListsViewController.h"
 #import "NLSearchResultViewController.h"
 #import "NLPlaylistService.h"
 
@@ -183,7 +183,7 @@
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     NLCategoryModel *model = self.categories[indexPath.item];
-    NLPlaylistViewController *vc = [[NLPlaylistViewController alloc] initWithCategoryModel:model];
+    NLPlayListsViewController *vc = [[NLPlayListsViewController alloc] initWithCategoryModel:model];
     [self.navigationController pushViewController:vc animated:YES];
 }
 

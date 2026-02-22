@@ -7,23 +7,18 @@
 
 #import "NLMusicPlayerView.h"
 #import "NLExpandableTouchSlider.h"
+#import "NLSong.h"
 #import <Masonry/Masonry.h>
 #import <SDWebImage/SDWebImage.h>
 
-static const CGFloat kCoverSize = 320.0;
-static const CGFloat kControlBtnSize = 60.0;
-static const CGFloat kSidePadding = 20.0;
-static const CGFloat kBottomBtnSize = 26.0;      // 底部图标尺寸（细化）
-static const CGFloat kBottomBtnSpacing = 56.0;  // 底部四按钮间距（拉大）
-static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
-
-@interface NLMusicPlayerView ()
+@interface NLMusicPlayerView () <UITableViewDataSource, UITableViewDelegate>
 
 @property (nonatomic, strong) UIImageView *coverImageView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *artistLabel;
 @property (nonatomic, strong) UILabel *currentTimeLabel;
 @property (nonatomic, strong) UILabel *totalTimeLabel;
+@property (nonatomic, assign) BOOL hasShownVipToastForThisSong;
 @property (nonatomic, strong) UIButton *playPauseButton;
 @property (nonatomic, strong) UIButton *previousButton;
 @property (nonatomic, strong) UIButton *nextButton;
@@ -37,13 +32,31 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 @property (nonatomic, strong) UIButton *moreButton;
 
 // 底部四个按钮
+@property (nonatomic, strong) UIStackView *bottomButtonsStackView;
 @property (nonatomic, strong) UIButton *commentButton;
 @property (nonatomic, strong) UIButton *playModeButton;
 @property (nonatomic, strong) UIButton *playlistButton;
 @property (nonatomic, strong) UIButton *addToPlaylistButton;
+@property (nonatomic, strong) UIView *playlistButtonCircleView;
+
+// 播放控制与音量（StackView 分组）
+@property (nonatomic, strong) UIStackView *timeLabelsStackView;
+@property (nonatomic, strong) UIStackView *playControlsStackView;
+@property (nonatomic, strong) UIStackView *volumeStackView;
 
 // 下滑横栏指示器
 @property (nonatomic, strong) UIView *dismissIndicator;
+
+// 播放队列面板（在进度条上方）
+@property (nonatomic, strong) UIView *queueContainerView;
+@property (nonatomic, strong) UIStackView *queueContainerStackView;
+@property (nonatomic, strong) UIStackView *queueModeStackView;
+@property (nonatomic, strong) UIButton *queueShuffleButton;
+@property (nonatomic, strong) UIButton *queueListLoopButton;
+@property (nonatomic, strong) UIButton *queueSingleLoopButton;
+
+@property (nonatomic, strong) UITableView *queueTableView;
+@property (nonatomic, assign, readwrite) BOOL isQueuePanelVisible;
 
 @property (nonatomic, assign) NLPlayMode playMode;
 @property (nonatomic, assign) BOOL isPlaying;
@@ -58,12 +71,7 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
-        // 使用稍微深一点的背景色，避免纯白
-        if (@available(iOS 13.0, *)) {
-            self.backgroundColor = [UIColor secondarySystemBackgroundColor];
-        } else {
-            self.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-        }
+        self.backgroundColor = [UIColor secondarySystemBackgroundColor];
         self.playMode = NLPlayModeListLoop;
         self.isPlaying = NO;
         [self setupUI];
@@ -75,21 +83,20 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 #pragma mark - UI Setup
 
 - (void)setupUI {
-    // 1. 封面图片（先添加，在底层）
     self.coverImageView = [[UIImageView alloc] init];
-    self.coverImageView.layer.cornerRadius = 12; // 更小的圆角
+    self.coverImageView.layer.cornerRadius = 12;
     self.coverImageView.clipsToBounds = YES;
     self.coverImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.coverImageView.backgroundColor = [UIColor tertiarySystemFillColor];
     [self addSubview:self.coverImageView];
-    
-    // 2. 下滑横栏指示器（在封面上方，类似iPhone底部上滑退出指示条）
+
+    // 下滑横栏指示器
     self.dismissIndicator = [[UIView alloc] init];
     self.dismissIndicator.backgroundColor = [UIColor tertiaryLabelColor];
     self.dismissIndicator.layer.cornerRadius = 2.5; // 圆角
     [self addSubview:self.dismissIndicator];
 
-    // 3. 歌曲信息（左对齐）
+    // 歌曲信息
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.textColor = [UIColor labelColor];
     self.titleLabel.font = [UIFont boldSystemFontOfSize:20];
@@ -103,21 +110,21 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
     self.artistLabel.textAlignment = NSTextAlignmentLeft;
     self.artistLabel.text = @"歌手";
     [self addSubview:self.artistLabel];
-    
-    // 4. 收藏和更多按钮（在歌曲信息右侧）
+
+    // 收藏和更多按钮
     self.favoriteButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.favoriteButton setImage:[UIImage systemImageNamed:@"star"] forState:UIControlStateNormal];
     self.favoriteButton.tintColor = [UIColor labelColor];
     [self.favoriteButton addTarget:self action:@selector(favoriteTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.favoriteButton];
-    
+
     self.moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.moreButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal];
     self.moreButton.tintColor = [UIColor labelColor];
     [self.moreButton addTarget:self action:@selector(moreTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.moreButton];
 
-    // 5. 时间标签和进度条
+    // 时间标签和进度条
     self.currentTimeLabel = [[UILabel alloc] init];
     self.currentTimeLabel.textColor = [UIColor secondaryLabelColor];
     self.currentTimeLabel.font = [UIFont systemFontOfSize:14];
@@ -137,122 +144,146 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
     [self.progressSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
     self.progressSlider.minimumTrackTintColor = [UIColor labelColor];
     self.progressSlider.maximumTrackTintColor = [UIColor tertiarySystemFillColor];
-    // 添加多个触摸事件，确保能够响应滑动
+    // 添加三个事件，分别适用于：通过进度条拉动调整进度、触碰到进度条时加粗/离开时恢复
     [self.progressSlider addTarget:self action:@selector(progressChanged:) forControlEvents:UIControlEventValueChanged];
     [self.progressSlider addTarget:self action:@selector(progressTouchDown:) forControlEvents:UIControlEventTouchDown];
     [self.progressSlider addTarget:self action:@selector(progressTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
     [self addSubview:self.progressSlider];
 
-    // 6. 播放控制按钮（居中，使用双箭头图标）
-    // 上一首按钮（双左箭头）
+    UIView *timeSpacer = [[UIView alloc] init];
+    self.timeLabelsStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.currentTimeLabel, timeSpacer, self.totalTimeLabel]];
+    self.timeLabelsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.timeLabelsStackView.distribution = UIStackViewDistributionFill;
+    self.timeLabelsStackView.alignment = UIStackViewAlignmentCenter;
+    self.timeLabelsStackView.spacing = 8;
+    [self addSubview:self.timeLabelsStackView];
+
+    // 播放控制按钮
     self.previousButton = [UIButton buttonWithType:UIButtonTypeSystem];
     UIImageSymbolConfiguration *prevConfig = [UIImageSymbolConfiguration configurationWithPointSize:28];
     [self.previousButton setImage:[UIImage systemImageNamed:@"backward.end.fill" withConfiguration:prevConfig] forState:UIControlStateNormal];
     self.previousButton.tintColor = [UIColor labelColor];
     [self.previousButton addTarget:self action:@selector(previousTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self addSubview:self.previousButton];
 
-    // 播放/暂停按钮（大按钮）
     self.playPauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
     UIImageSymbolConfiguration *playConfig = [UIImageSymbolConfiguration configurationWithPointSize:36];
     [self.playPauseButton setImage:[UIImage systemImageNamed:@"play.fill" withConfiguration:playConfig] forState:UIControlStateNormal];
     self.playPauseButton.tintColor = [UIColor labelColor];
     [self.playPauseButton addTarget:self action:@selector(playPauseTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self addSubview:self.playPauseButton];
 
-    // 下一首按钮（双右箭头）
     self.nextButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.nextButton setImage:[UIImage systemImageNamed:@"forward.end.fill" withConfiguration:prevConfig] forState:UIControlStateNormal];
     self.nextButton.tintColor = [UIColor labelColor];
     [self.nextButton addTarget:self action:@selector(nextTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self addSubview:self.nextButton];
 
-    // 7. 音量控制（左侧speaker图标，右侧speaker.wave图标）
+    // 音量控制
     self.volumeLeftIcon = [[UIImageView alloc] init];
     self.volumeLeftIcon.image = [UIImage systemImageNamed:@"speaker.fill"];
     self.volumeLeftIcon.tintColor = [UIColor secondaryLabelColor];
     self.volumeLeftIcon.contentMode = UIViewContentModeScaleAspectFit;
-    [self addSubview:self.volumeLeftIcon];
-    
+
     self.volumeRightIcon = [[UIImageView alloc] init];
     self.volumeRightIcon.image = [UIImage systemImageNamed:@"speaker.wave.3.fill"];
     self.volumeRightIcon.tintColor = [UIColor secondaryLabelColor];
     self.volumeRightIcon.contentMode = UIViewContentModeScaleAspectFit;
-    [self addSubview:self.volumeRightIcon];
 
     self.volumeSlider = [[NLExpandableTouchSlider alloc] init];
     self.volumeSlider.value = 0.7;
     [self.volumeSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
     self.volumeSlider.minimumTrackTintColor = [UIColor secondaryLabelColor];
     self.volumeSlider.maximumTrackTintColor = [UIColor tertiarySystemFillColor];
+
     // 添加多个触摸事件，确保能够响应滑动
     [self.volumeSlider addTarget:self action:@selector(volumeChanged:) forControlEvents:UIControlEventValueChanged];
     [self.volumeSlider addTarget:self action:@selector(volumeTouchDown:) forControlEvents:UIControlEventTouchDown];
     [self.volumeSlider addTarget:self action:@selector(volumeTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
-    [self addSubview:self.volumeSlider];
 
     self.commentButton = [self createBottomButtonWithIcon:@"message" action:@selector(commentTapped)];
     self.playModeButton = [self createBottomButtonWithIcon:@"repeat" action:@selector(playModeTapped)];
     self.playlistButton = [self createBottomButtonWithIcon:@"list.bullet" action:@selector(playlistTapped)];
     self.addToPlaylistButton = [self createBottomButtonWithIcon:@"plus.circle" action:@selector(addToPlaylistTapped)];
 
-    [self addSubview:self.commentButton];
-    [self addSubview:self.playModeButton];
-    [self addSubview:self.playlistButton];
-    [self addSubview:self.addToPlaylistButton];
+    self.playlistButtonCircleView = [[UIView alloc] init];
+    self.playlistButtonCircleView.backgroundColor = [UIColor systemGray4Color];
+    self.playlistButtonCircleView.layer.cornerRadius = 20;
+    self.playlistButtonCircleView.clipsToBounds = YES;
+    self.playlistButtonCircleView.hidden = YES;
+    [self addSubview:self.playlistButtonCircleView];
+    [self sendSubviewToBack:self.playlistButtonCircleView];
+
+    // 播放队列面板
+    self.queueContainerView = [[UIView alloc] init];
+    self.queueContainerView.backgroundColor = [UIColor clearColor];
+    self.queueContainerView.clipsToBounds = YES;
+    [self addSubview:self.queueContainerView];
+
+    self.queueShuffleButton = [self createQueueModeButtonWithTitle:@"" icon:@"shuffle" tag:NLPlayModeRandom];
+    self.queueListLoopButton = [self createQueueModeButtonWithTitle:@"" icon:@"repeat" tag:NLPlayModeListLoop];
+    self.queueSingleLoopButton = [self createQueueModeButtonWithTitle:@"" icon:@"repeat.1" tag:NLPlayModeSingleLoop];
+
+    self.queueModeStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.queueShuffleButton, self.queueListLoopButton, self.queueSingleLoopButton]];
+    self.queueModeStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.queueModeStackView.distribution = UIStackViewDistributionFill;
+    self.queueModeStackView.spacing = 16;
+    self.queueModeStackView.alignment = UIStackViewAlignmentCenter;
+
+    self.queueTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    self.queueTableView.delegate = self;
+    self.queueTableView.dataSource = self;
+    self.queueTableView.backgroundColor = [UIColor clearColor];
+    self.queueTableView.separatorColor = [UIColor separatorColor];
+    self.queueTableView.rowHeight = 52;
+    self.queueTableView.scrollEnabled = YES;
+    self.queueTableView.showsVerticalScrollIndicator = YES;
+    [self.queueTableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"QueueCell"];
+
+    self.queueContainerStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.queueModeStackView, self.queueTableView]];
+    self.queueContainerStackView.axis = UILayoutConstraintAxisVertical;
+    self.queueContainerStackView.distribution = UIStackViewDistributionFill;
+    self.queueContainerStackView.spacing = 8;
+    self.queueContainerStackView.alignment = UIStackViewAlignmentFill;
+    [self.queueContainerView addSubview:self.queueContainerStackView];
+
+    self.playControlsStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.previousButton, self.playPauseButton, self.nextButton]];
+    self.playControlsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.playControlsStackView.distribution = UIStackViewDistributionEqualSpacing;
+    self.playControlsStackView.spacing = 40;
+    self.playControlsStackView.alignment = UIStackViewAlignmentCenter;
+    [self addSubview:self.playControlsStackView];
+
+    self.volumeStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.volumeLeftIcon, self.volumeSlider, self.volumeRightIcon]];
+    self.volumeStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.volumeStackView.distribution = UIStackViewDistributionFill;
+    self.volumeStackView.spacing = 15;
+    self.volumeStackView.alignment = UIStackViewAlignmentCenter;
+    [self addSubview:self.volumeStackView];
+
+    self.bottomButtonsStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.commentButton, self.playModeButton, self.playlistButton, self.addToPlaylistButton]];
+    self.bottomButtonsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.bottomButtonsStackView.distribution = UIStackViewDistributionEqualSpacing;
+    self.bottomButtonsStackView.spacing = 56;
+    self.bottomButtonsStackView.alignment = UIStackViewAlignmentCenter;
+    [self addSubview:self.bottomButtonsStackView];
 }
 
-- (UIButton *)createBottomButtonWithIcon:(NSString *)iconName action:(SEL)action {
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:kBottomBtnSize weight:UIImageSymbolWeightLight];
-    [button setImage:[UIImage systemImageNamed:iconName withConfiguration:config] forState:UIControlStateNormal];
-    button.tintColor = [UIColor labelColor];
-    button.adjustsImageWhenHighlighted = NO;
-    [button addTarget:self action:@selector(bottomButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
-    [button addTarget:self action:@selector(bottomButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    return button;
-}
-
-- (void)bottomButtonTouchDown:(UIButton *)button {
-    [UIView animateWithDuration:0.1 animations:^{
-        button.transform = CGAffineTransformMakeScale(0.9, 0.9);
-        button.alpha = 0.7;
-    }];
-}
-
-- (void)bottomButtonTouchUp:(UIButton *)button {
-    [UIView animateWithDuration:0.2
-                          delay:0
-         usingSpringWithDamping:0.6
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        button.transform = CGAffineTransformIdentity;
-        button.alpha = 1.0;
-    } completion:nil];
-}
 
 - (void)setupConstraints {
-    // 1. 封面（距离顶部）
     [self.coverImageView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(self.mas_safeAreaLayoutGuideTop).offset(60);
         make.centerX.equalTo(self);
-        make.width.height.mas_equalTo(kCoverSize);
-    }];
-    
-    // 2. 下滑横栏指示器（在封面上方，类似iPhone底部上滑退出指示条）
-    [self.dismissIndicator mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.bottom.equalTo(self.coverImageView.mas_top).offset(-42); // 在封面上方12pt
-        make.centerX.equalTo(self);
-        make.width.mas_equalTo(80); // 类似iPhone底部指示条的大小
-        make.height.mas_equalTo(5); // 高度
+        make.width.height.mas_equalTo(320);
     }];
 
-    // 3. 歌曲信息（左对齐，右侧有按钮）
+    [self.dismissIndicator mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.bottom.equalTo(self.coverImageView.mas_top).offset(-42);
+        make.centerX.equalTo(self);
+        make.width.mas_equalTo(80);
+        make.height.mas_equalTo(5);
+    }];
+
     [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(self.coverImageView.mas_bottom).offset(24);
-        make.left.equalTo(self).offset(kSidePadding);
+        make.left.equalTo(self).offset(20);
         make.right.lessThanOrEqualTo(self.favoriteButton.mas_left).offset(-16);
     }];
 
@@ -261,97 +292,117 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
         make.left.equalTo(self.titleLabel);
         make.right.lessThanOrEqualTo(self.favoriteButton.mas_left).offset(-16);
     }];
-    
-    // 收藏和更多按钮（在标题右侧，水平对齐）
+
     [self.favoriteButton mas_makeConstraints:^(MASConstraintMaker *make) {
         make.centerY.equalTo(self.titleLabel);
         make.right.equalTo(self.moreButton.mas_left).offset(-20);
         make.size.mas_equalTo(32);
     }];
-    
+
     [self.moreButton mas_makeConstraints:^(MASConstraintMaker *make) {
         make.centerY.equalTo(self.titleLabel);
-        make.right.equalTo(self).offset(-kSidePadding);
+        make.right.equalTo(self).offset(-20);
         make.size.mas_equalTo(32);
     }];
 
-    // 4. 进度条和时间标签（进度条在上，时间标签在下，进度条延长）
+    [self.queueContainerView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(self.artistLabel.mas_bottom).offset(32);
+        make.centerX.equalTo(self);
+        make.width.mas_equalTo(342);
+        make.height.mas_equalTo(0);
+    }];
+    [self.queueContainerStackView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.queueContainerView);
+    }];
+    [self.queueModeStackView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(35);
+    }];
+    [self.queueShuffleButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(CGSizeMake(95, 35));
+    }];
+    [self.queueListLoopButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(CGSizeMake(95, 35));
+    }];
+    [self.queueSingleLoopButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(CGSizeMake(95, 35));
+    }];
+    [self.queueShuffleButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.queueListLoopButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.queueSingleLoopButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.queueTableView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(312);
+    }];
+
     [self.progressSlider mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.artistLabel.mas_bottom).offset(24);
         make.left.equalTo(self).offset(30);
         make.right.equalTo(self).offset(-30);
-        make.height.mas_equalTo(6); // 视觉上保持细线
+        make.height.mas_equalTo(6);
+        make.bottom.equalTo(self.timeLabelsStackView.mas_top).offset(-11);
     }];
-    
+
     [self.currentTimeLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.progressSlider.mas_bottom).offset(11);
-        make.left.equalTo(self.progressSlider);
         make.width.mas_equalTo(50);
     }];
-
     [self.totalTimeLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.currentTimeLabel);
-        make.right.equalTo(self.progressSlider);
         make.width.mas_equalTo(50);
     }];
+    [self.timeLabelsStackView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.left.right.equalTo(self.progressSlider);
+        make.bottom.equalTo(self.playControlsStackView.mas_top).offset(-32);
+    }];
 
-    // 5. 播放控制按钮（居中，均匀分布）
-    [self.playPauseButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.currentTimeLabel.mas_bottom).offset(32);
+    [self.playControlsStackView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.centerX.equalTo(self);
-        make.size.mas_equalTo(kControlBtnSize);
+        make.bottom.equalTo(self.volumeStackView.mas_top).offset(-32);
     }];
-
     [self.previousButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(self.playPauseButton);
-        make.right.equalTo(self.playPauseButton.mas_left).offset(-40);
         make.size.mas_equalTo(44);
     }];
-
+    [self.playPauseButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(60);
+    }];
     [self.nextButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(self.playPauseButton);
-        make.left.equalTo(self.playPauseButton.mas_right).offset(40);
         make.size.mas_equalTo(44);
     }];
 
-    // 6. 音量控制（缩短音量条，图标更靠近）
-    [self.volumeLeftIcon mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.playPauseButton.mas_bottom).offset(32);
+    [self.volumeStackView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.left.equalTo(self).offset(40);
-        make.width.height.mas_equalTo(18);
-    }];
-    
-    [self.volumeRightIcon mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(self.volumeLeftIcon);
         make.right.equalTo(self).offset(-40);
-        make.width.height.mas_equalTo(18);
+        make.bottom.equalTo(self.bottomButtonsStackView.mas_top).offset(-32);
     }];
-
+    [self.volumeLeftIcon mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(18);
+    }];
+    [self.volumeRightIcon mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(18);
+    }];
     [self.volumeSlider mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.centerY.equalTo(self.volumeLeftIcon);
-        make.left.equalTo(self.volumeLeftIcon.mas_right).offset(15);
-        make.right.equalTo(self.volumeRightIcon.mas_left).offset(-15);
-        make.height.mas_equalTo(5); // 视觉上保持细线
+        make.height.mas_equalTo(10);
     }];
 
-    // 7. 底部四个功能按钮（间距拉大、图标细化、居中分布）
-    NSArray *bottomButtons = @[self.commentButton, self.playModeButton, self.playlistButton, self.addToPlaylistButton];
-    CGFloat screenWidth = [UIScreen mainScreen].bounds.size.width;
-    CGFloat btnSize = 44.0; // 点击区域保持 44pt，图标为 kBottomBtnSize 更细
-    CGFloat spacing = kBottomBtnSpacing;
-    CGFloat totalWidth = bottomButtons.count * btnSize + (bottomButtons.count - 1) * spacing;
-    CGFloat startX = (screenWidth - totalWidth) / 2.0;
-
-    for (NSInteger i = 0; i < bottomButtons.count; i++) {
-        UIButton *button = bottomButtons[i];
-        [button mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.bottom.equalTo(self.mas_safeAreaLayoutGuideBottom).offset(-kBottomBtnBottomInset);
-            make.left.equalTo(self).offset(startX + i * (btnSize + spacing));
-            make.size.mas_equalTo(btnSize);
-        }];
-    }
+    [self.bottomButtonsStackView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerX.equalTo(self);
+        make.bottom.equalTo(self.mas_safeAreaLayoutGuideBottom).offset(-48);
+    }];
+    [self.commentButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(30);
+    }];
+    [self.playModeButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(30);
+    }];
+    [self.playlistButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(30);
+    }];
+    [self.addToPlaylistButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.size.mas_equalTo(30);
+    }];
+    [self.playlistButtonCircleView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.center.equalTo(self.playlistButton);
+        make.size.mas_equalTo(40);
+    }];
 }
 
+#pragma mark - Updata Data
 
 - (void)updateTitle:(NSString *)title artist:(NSString *)artist {
     self.titleLabel.text = title ?: @"";
@@ -369,23 +420,9 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 - (void)updatePlayState:(BOOL)isPlaying {
     self.isPlaying = isPlaying;
 
-    // 更新播放按钮图标
     NSString *iconName = isPlaying ? @"pause.fill" : @"play.fill";
     UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:36];
     [self.playPauseButton setImage:[UIImage systemImageNamed:iconName withConfiguration:config] forState:UIControlStateNormal];
-
-    // 封面放大缩小动画（增大变化幅度，减小播放时的大小）
-    // 播放时：0.92（更小，变化幅度更大），暂停时：1.0
-    CGFloat baseScale = isPlaying ? 0.92 : 1.0; // 减小播放时的封面大小，增大变化幅度
-    CGFloat dismissScale = 1.0 - self.dismissProgress * 0.1;
-    [UIView animateWithDuration:0.4
-                          delay:0
-         usingSpringWithDamping:0.6
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseInOut
-                     animations:^{
-        self.coverImageView.transform = CGAffineTransformMakeScale(baseScale * dismissScale, baseScale * dismissScale);
-    } completion:nil];
 }
 
 - (void)updateProgress:(float)progress {
@@ -396,14 +433,15 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 
 - (void)updateCurrentTime:(NSTimeInterval)currentTime totalTime:(NSTimeInterval)totalTime {
     self.currentTimeLabel.text = [self formattedTime:currentTime];
-    // 显示剩余时间（负数格式）
-    NSTimeInterval remainingTime = totalTime - currentTime;
-    if (remainingTime > 0) {
-        self.totalTimeLabel.text = [NSString stringWithFormat:@"%@", [self formattedTime:remainingTime]];
-    } else {
-        self.totalTimeLabel.text = @"0:00";
+    self.totalTimeLabel.text = [self formattedTime:totalTime];
+    BOOL isVipTrial = (totalTime > 0 && totalTime <= 60);
+    if (isVipTrial && !self.hasShownVipToastForThisSong) {
+        self.hasShownVipToastForThisSong = YES;
+    } else if (!isVipTrial) {
+        self.hasShownVipToastForThisSong = NO;
     }
 }
+
 
 - (void)updateVolume:(float)volume {
     self.volumeSlider.value = volume;
@@ -411,20 +449,23 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 
 - (void)setDismissProgress:(CGFloat)dismissProgress {
     _dismissProgress = dismissProgress;
-
+    /*
+     自定义set方法，先赋值，然后再下滑时随下滑进度缩小封面，同时减小不透明度alpha
+     */
     // 更新封面缩放（下滑时缩小，考虑播放状态）
-    CGFloat baseScale = self.isPlaying ? 0.92 : 1.0; // 减小播放时的封面大小，增大变化幅度
+    CGFloat baseScale = self.isPlaying ? 0.92 : 1.0;
     CGFloat dismissScale = 1.0 - dismissProgress * 0.1;
     self.coverImageView.transform = CGAffineTransformMakeScale(baseScale * dismissScale, baseScale * dismissScale);
-    
-    // 更新整体视图的透明度（轻微变暗）
     self.alpha = 1.0 - dismissProgress * 0.2;
 }
 
 - (void)updatePlayMode:(NLPlayMode)playMode {
     self.playMode = playMode;
-
+    [self updateQueueModeButtonsSelection];
     NSString *iconName = @"";
+    /*
+     switchCase不使用default，便于后续添加或删除
+     */
     switch (playMode) {
         case NLPlayModeListLoop:
             iconName = @"repeat";
@@ -441,7 +482,7 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
     [self.playModeButton setImage:[UIImage systemImageNamed:iconName withConfiguration:config] forState:UIControlStateNormal];
 }
 
-#pragma mark - Helper Methods
+#pragma mark - Tool Methods && Factory Methods
 
 - (NSString *)formattedTime:(float)seconds {
     int totalSeconds = (int)seconds;
@@ -450,36 +491,39 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
     return [NSString stringWithFormat:@"%d:%02d", minutes, remainingSeconds];
 }
 
-// 创建指定高度和颜色的 track 图片（用于视觉控制）
-- (UIImage *)trackImageWithHeight:(CGFloat)height color:(UIColor *)color {
-    // 创建一个可拉伸的 track 图片
-    // 使用 3xheight 的图片，中间 1xheight 区域可拉伸
-    CGSize size = CGSizeMake(3, height);
-    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    
-    // 填充颜色
-    [color setFill];
-    CGContextFillRect(context, CGRectMake(0, 0, size.width, size.height));
-    
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    // 设置可拉伸区域（中间 1xheight 区域可拉伸，左右各1pt固定）
-    UIEdgeInsets insets = UIEdgeInsetsMake(0, 1, 0, 1);
-    return [image resizableImageWithCapInsets:insets resizingMode:UIImageResizingModeStretch];
+
+- (UIButton *)createBottomButtonWithIcon:(NSString *)iconName action:(SEL)action {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:26 weight:UIImageSymbolWeightLight];
+    [button setImage:[UIImage systemImageNamed:iconName withConfiguration:config] forState:UIControlStateNormal];
+    button.tintColor = [UIColor labelColor];
+    button.adjustsImageWhenHighlighted = NO;
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    return button;
 }
 
-#pragma mark - Actions
+- (UIButton *)createQueueModeButtonWithTitle:(NSString *)title icon:(NSString *)iconName tag:(NLPlayMode)mode {
+    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [btn setTitle:title forState:UIControlStateNormal];
+    [btn setImage:[UIImage systemImageNamed:iconName] forState:UIControlStateNormal];
+    btn.tag = mode;
+    btn.titleLabel.font = [UIFont systemFontOfSize:13];
+    btn.tintColor = [UIColor secondaryLabelColor];
+    btn.backgroundColor = [UIColor tertiarySystemFillColor];
+    btn.layer.cornerRadius = 17.5;
+    btn.clipsToBounds = YES;
+    [btn addTarget:self action:@selector(queueModeTapped:) forControlEvents:UIControlEventTouchUpInside];
+    return btn;
+}
+
+#pragma mark - Actions && Delegate
 
 - (void)favoriteTapped {
     // 切换收藏状态
-    // TODO: 实现收藏功能
 }
 
 - (void)moreTapped {
     // 显示更多选项
-    // TODO: 实现更多功能
 }
 
 - (void)playPauseTapped {
@@ -495,16 +539,186 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 }
 
 - (void)commentTapped {
-    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapComment:)]) {
-        [self.delegate musicPlayerViewDidTapComment:self];
-    }
+    [self.delegate musicPlayerViewDidTapComment:self];
 }
 
 - (void)playlistTapped {
-    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapPlaylist:)]) {
-        [self.delegate musicPlayerViewDidTapPlaylist:self];
+    [self.delegate musicPlayerViewDidTapPlaylist:self];
+}
+
+- (void)queueModeTapped:(UIButton *)sender {
+    NLPlayMode mode = (NLPlayMode)sender.tag;
+    self.playMode = mode;
+    [self updateQueueModeButtonsSelection];
+    [self.delegate musicPlayerView:self didChangePlayMode:mode];
+}
+
+- (void)updateQueueModeButtonsSelection {
+    UIColor *selectedColor = [UIColor labelColor];
+    UIColor *normalColor = [UIColor secondaryLabelColor];
+    self.queueShuffleButton.tintColor = (self.playMode == NLPlayModeRandom) ? selectedColor : normalColor;
+    self.queueListLoopButton.tintColor = (self.playMode == NLPlayModeListLoop) ? selectedColor : normalColor;
+    self.queueSingleLoopButton.tintColor = (self.playMode == NLPlayModeSingleLoop) ? selectedColor : normalColor;
+}
+
+#pragma mark - Queue Panel
+
+- (void)setQueuePanelVisible:(BOOL)visible animated:(BOOL)animated {
+    if (_isQueuePanelVisible == visible) return;
+    _isQueuePanelVisible = visible;
+    CGFloat queueHeight = visible ? 355 : 0;
+    [self applyLayoutCompact:visible queuePanelHeight:queueHeight];
+    if (visible) {
+        [self updateQueueModeButtonsSelection];
+        [self reloadQueue];
+        self.coverImageView.transform = CGAffineTransformIdentity;
+        self.playlistButtonCircleView.hidden = NO;
+    } else {
+        CGFloat baseScale = self.isPlaying ? 0.92f : 1.0f;
+        CGFloat dismissScale = 1.0f - (CGFloat)self.dismissProgress * 0.1f;
+        self.coverImageView.transform = CGAffineTransformMakeScale(baseScale * dismissScale, baseScale * dismissScale);
+        self.playlistButtonCircleView.hidden = YES;
     }
 }
+
+- (void)applyLayoutCompact:(BOOL)compact queuePanelHeight:(CGFloat)queuePanelHeight {
+    if (compact) {
+        [self.dismissIndicator mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.mas_safeAreaLayoutGuideTop).offset(6);
+            make.centerX.equalTo(self);
+            make.width.mas_equalTo(80);
+            make.height.mas_equalTo(5);
+        }];
+        [self.coverImageView mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.mas_safeAreaLayoutGuideTop).offset(16);
+            make.left.equalTo(self).offset(20);
+            make.width.height.mas_equalTo(56);
+        }];
+        [self.titleLabel mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.left.equalTo(self.coverImageView.mas_right).offset(12);
+            make.top.equalTo(self.coverImageView);
+            make.right.lessThanOrEqualTo(self.moreButton.mas_left).offset(-8);
+        }];
+        [self.artistLabel mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.left.equalTo(self.titleLabel);
+            make.top.equalTo(self.titleLabel.mas_bottom).offset(2);
+        }];
+        [self.favoriteButton mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(self.coverImageView);
+            make.right.equalTo(self.moreButton.mas_left).offset(-20);
+            make.size.mas_equalTo(32);
+        }];
+        [self.moreButton mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(self.coverImageView);
+            make.right.equalTo(self).offset(-20);
+            make.size.mas_equalTo(32);
+        }];
+        [self.queueContainerView mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.coverImageView.mas_bottom).offset(28);
+            make.centerX.equalTo(self);
+            make.width.mas_equalTo(342);
+            make.height.mas_equalTo(queuePanelHeight);
+        }];
+        [self.queueTableView mas_updateConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(312);
+        }];
+    } else {
+        [self.dismissIndicator mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.bottom.equalTo(self.coverImageView.mas_top).offset(-42);
+            make.centerX.equalTo(self);
+            make.width.mas_equalTo(80);
+            make.height.mas_equalTo(5);
+        }];
+        [self.coverImageView mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.mas_safeAreaLayoutGuideTop).offset(60);
+            make.centerX.equalTo(self);
+            make.width.height.mas_equalTo(320);
+        }];
+        [self.titleLabel mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.coverImageView.mas_bottom).offset(24);
+            make.left.equalTo(self).offset(20);
+            make.right.lessThanOrEqualTo(self.favoriteButton.mas_left).offset(-16);
+        }];
+        [self.artistLabel mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.titleLabel.mas_bottom).offset(4);
+            make.left.equalTo(self.titleLabel);
+            make.right.lessThanOrEqualTo(self.favoriteButton.mas_left).offset(-16);
+        }];
+        [self.favoriteButton mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(self.titleLabel);
+            make.right.equalTo(self.moreButton.mas_left).offset(-20);
+            make.size.mas_equalTo(32);
+        }];
+        [self.moreButton mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(self.titleLabel);
+            make.right.equalTo(self).offset(-20);
+            make.size.mas_equalTo(32);
+        }];
+        [self.queueContainerView mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.artistLabel.mas_bottom).offset(32);
+            make.centerX.equalTo(self);
+            make.width.mas_equalTo(342);
+            make.height.mas_equalTo(0);
+        }];
+        [self.queueTableView mas_updateConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(160);
+        }];
+    }
+    [self setNeedsLayout];
+}
+
+- (void)reloadQueue {
+    [self.queueTableView reloadData];
+    NSInteger currentIndex = [self.delegate respondsToSelector:@selector(musicPlayerViewCurrentIndex:)] ? [self.delegate musicPlayerViewCurrentIndex:self] : -1;
+    NSArray *list = [self.delegate respondsToSelector:@selector(musicPlayerViewPlaylist:)] ? [self.delegate musicPlayerViewPlaylist:self] : nil;
+    if (currentIndex >= 0 && list.count > 0 && currentIndex < (NSInteger)list.count) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:currentIndex inSection:0];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.queueTableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
+        });
+    }
+}
+
+#pragma mark - UITableViewDataSource / Delegate (Queue)
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    if (tableView != self.queueTableView) return 0;
+    if (![self.delegate respondsToSelector:@selector(musicPlayerViewPlaylist:)]) return 0;
+    NSArray *list = [self.delegate musicPlayerViewPlaylist:self];
+    if (!list || list.count == 0) return 1; // 占位行「队列中无音乐。」
+    return list.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"QueueCell" forIndexPath:indexPath];
+    cell.backgroundColor = [UIColor clearColor];
+    cell.textLabel.font = [UIFont systemFontOfSize:15];
+    cell.textLabel.textColor = [UIColor labelColor];
+    NSArray *list = [self.delegate musicPlayerViewPlaylist:self];
+    NSInteger currentIndex = [self.delegate musicPlayerViewCurrentIndex:self];
+    if (!list || list.count == 0) {
+        cell.textLabel.text = @"队列中无音乐。";
+        cell.textLabel.textColor = [UIColor tertiaryLabelColor];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        return cell;
+    }
+    NLSong *song = list[indexPath.row];
+    cell.textLabel.text = song.title ?: @"";
+    cell.textLabel.textColor = (indexPath.row == currentIndex) ? [UIColor labelColor] : [UIColor secondaryLabelColor];
+    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+    return cell;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    NSArray *list = [self.delegate respondsToSelector:@selector(musicPlayerViewPlaylist:)] ? [self.delegate musicPlayerViewPlaylist:self] : nil;
+    if (!list || list.count == 0) return;
+    if ([self.delegate respondsToSelector:@selector(musicPlayerView:didSelectSongAtIndex:)]) {
+        [self.delegate musicPlayerView:self didSelectSongAtIndex:indexPath.row];
+    }
+}
+
+#pragma mark - 事件响应
 
 - (void)addToPlaylistTapped {
 //    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapAddToPlaylist:)]) {
@@ -535,10 +749,7 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 }
 
 - (void)progressTouchDown:(UISlider *)slider {
-    // 开始拖动进度条
     self.isTrackingProgress = YES;
-    
-    // Apple Music 同款效果：拖动时加粗
     [self.progressSlider mas_updateConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(10); // 从2pt加粗到4pt
     }];
@@ -553,9 +764,8 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 }
 
 - (void)progressTouchUp:(UISlider *)slider {
-    // 结束拖动进度条
     self.isTrackingProgress = NO;
-    
+
     // 恢复细线
     [self.progressSlider mas_updateConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(2); // 恢复为2pt
@@ -568,7 +778,6 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
                      animations:^{
         [self layoutIfNeeded];
     } completion:nil];
-    
     // 确保最终值被应用
     if ([self.delegate respondsToSelector:@selector(musicPlayerView:didChangeProgress:)]) {
         [self.delegate musicPlayerView:self didChangeProgress:slider.value];
@@ -576,10 +785,8 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 }
 
 - (void)volumeTouchDown:(UISlider *)slider {
-    // 开始拖动音量条
     self.isTrackingVolume = YES;
-    
-    // Apple Music 同款效果：拖动时加粗
+
     [self.volumeSlider mas_updateConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(4); // 从2pt加粗到4pt
     }];
@@ -594,9 +801,7 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
 }
 
 - (void)volumeTouchUp:(UISlider *)slider {
-    // 结束拖动音量条
     self.isTrackingVolume = NO;
-    
     // 恢复细线
     [self.volumeSlider mas_updateConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(2); // 恢复为2pt
@@ -610,5 +815,6 @@ static const CGFloat kBottomBtnBottomInset = 48.0; // 距安全区底部
         [self layoutIfNeeded];
     } completion:nil];
 }
+
 
 @end
