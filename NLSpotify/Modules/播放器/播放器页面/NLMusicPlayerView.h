@@ -24,6 +24,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)musicPlayerViewDidTapComment:(NLMusicPlayerView *)view;
 - (void)musicPlayerView:(NLMusicPlayerView *)view didChangePlayMode:(NLPlayMode)playMode;
 - (void)musicPlayerViewDidTapPlaylist:(NLMusicPlayerView *)view;
+- (void)musicPlayerViewDidTapFavorite:(NLMusicPlayerView *)view;
+- (void)musicPlayerViewDidTapAddToPlaylist:(NLMusicPlayerView *)view;
 
 // 播放队列数据
 - (NSArray<NLSong *> *)musicPlayerViewPlaylist:(NLMusicPlayerView *)view;
@@ -52,6 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateVolume:(float)volume;
 - (void)updatePlayState:(BOOL)isPlaying;
 - (void)updatePlayMode:(NLPlayMode)playMode;
+- (void)updateFavoriteState:(BOOL)liked;
 
 // 播放队列面板（在进度条上方，可独立上下滑动）
 - (void)setQueuePanelVisible:(BOOL)visible animated:(BOOL)animated;

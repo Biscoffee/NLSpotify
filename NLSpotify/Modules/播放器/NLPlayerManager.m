@@ -7,6 +7,7 @@
 #import "NLPlayerManager.h"
 #import <AVFoundation/AVFoundation.h>
 #import "NLSongService.h"
+#import "NLSongRepository.h"
 #import "SDWebImage/SDWebImage.h"
 
 
@@ -33,8 +34,6 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 @end
 
 @implementation NLPlayerManager
-
-#pragma mark - 单例
 
 + (instancetype)sharedManager {
     static NLPlayerManager *manager;
@@ -106,6 +105,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     }
     // 更新当前歌曲并发送通知，先更新页面再播放音频，可以显得等待时间没有那么长/。
     self.currentSong = song;
+    [NLSongRepository addPlayHistory:song];
     [self postSongChangedNotification];
     // 创建播放项并开始播放
     [self playWithURL:song.playURL];
@@ -265,6 +265,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     self.currentIndex = index;
     NLSong *song = self.playlist[index];
     self.currentSong = song;
+    [NLSongRepository addPlayHistory:song];
     [self postSongChangedNotification];
 
     if (song.playURL) {

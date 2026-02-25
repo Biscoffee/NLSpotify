@@ -18,6 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *desc;          // 描述
 @property (nonatomic, copy) NSString *creatorName;   // 创建者昵称
 @property (nonatomic, copy) NSString *creatorAvatar; // 创建者头像
+/// YES 时不显示简介区域（用于自建歌单）
+@property (nonatomic, assign) BOOL hideDescription;
 
 @end
 

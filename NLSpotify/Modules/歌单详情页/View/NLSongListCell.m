@@ -5,6 +5,9 @@
 
 #import "NLSongListCell.h"
 #import "NLListCellModel.h"
+#import "NLSong.h"
+#import "NLPlayList.h"
+#import "NLAlbum.h"
 #import <Masonry/Masonry.h>
 #import "SDWebImage/SDWebImage.h"
 
@@ -78,6 +81,38 @@
         [_thumbImageView sd_setImageWithURL:[NSURL URLWithString:url] placeholderImage:nil];
     } else {
         _thumbImageView.image = nil;
+    }
+}
+
+- (void)configWithNLSong:(NLSong *)song {
+    _nameLabel.text = song.title ?: @"";
+    _artistLabel.text = song.artist ?: @"";
+    if (song.coverURL) {
+        [_thumbImageView sd_setImageWithURL:song.coverURL placeholderImage:nil];
+    } else {
+        _thumbImageView.image = nil;
+    }
+}
+
+- (void)configWithPlayList:(NLPlayList *)playList {
+    _nameLabel.text = playList.name.length ? playList.name : @"歌单";
+    _artistLabel.text = @"歌单";
+    if (playList.coverURL.length > 0) {
+        [_thumbImageView sd_setImageWithURL:[NSURL URLWithString:playList.coverURL] placeholderImage:nil];
+    } else {
+        _thumbImageView.image = nil;
+        _thumbImageView.backgroundColor = [UIColor tertiarySystemFillColor];
+    }
+}
+
+- (void)configWithAlbum:(NLAlbum *)album {
+    _nameLabel.text = album.name.length ? album.name : @"专辑";
+    _artistLabel.text = album.artistName.length ? album.artistName : @"专辑";
+    if (album.coverURL.length > 0) {
+        [_thumbImageView sd_setImageWithURL:[NSURL URLWithString:album.coverURL] placeholderImage:nil];
+    } else {
+        _thumbImageView.image = nil;
+        _thumbImageView.backgroundColor = [UIColor tertiarySystemFillColor];
     }
 }
 

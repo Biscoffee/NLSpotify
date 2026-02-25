@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0D211ECC86F272898223609AC68B504F"
-               BuildableName = "libHysteriaPlayer.a"
+               BuildableName = "HysteriaPlayer.framework"
                BlueprintName = "HysteriaPlayer"
                ReferencedContainer = "container:Pods.xcodeproj">
             </BuildableReference>

@@ -14,10 +14,13 @@ typedef NS_ENUM(NSUInteger, NLSongListType) {
     NLSongListTypeAlbum        
 };
 
+@class NLPlayList;
+
 @interface NLSongListViewController : UIViewController
 - (instancetype)initWithId:(NSInteger)listId
                       type:(NLSongListType)type
                       name:(NSString *)name;
+- (instancetype)initWithLocalPlayList:(NLPlayList *)playlist;
 @end
 
 NS_ASSUME_NONNULL_END

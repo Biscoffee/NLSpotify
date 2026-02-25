@@ -6,13 +6,20 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "NLListCellModel.h"
+
+@class NLListCellModel, NLSong, NLPlayList, NLAlbum;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NLSongListCell : UITableViewCell
 
 - (void)configWithSong:(NLListCellModel *)song;
+/// 直接用 NLSong 展示（用于最近播放、喜欢等本地列表）
+- (void)configWithNLSong:(NLSong *)song;
+/// 用同一套 UI 展示歌单（封面 + 标题 + 副标题，与歌曲行统一）
+- (void)configWithPlayList:(NLPlayList *)playList;
+/// 用同一套 UI 展示专辑（封面 + 标题 + 艺人名）
+- (void)configWithAlbum:(NLAlbum *)album;
 
 @end
 

@@ -13,6 +13,7 @@
 #import "Masonry/Masonry.h"
 #import "NLSongListViewController.h"
 #import "NLDrawerViewController.h"
+#import "NLRecentPlayViewController.h"
 
 @interface NLHomeViewController () <NLDrawerViewControllerDelegate>
 @property (nonatomic, strong) NLDrawerViewController *drawerVC;
@@ -53,6 +54,17 @@
 #pragma mark - NLDrawerViewControllerDelegate
 
 - (void)drawerController:(NLDrawerViewController *)controller didSelectMenuAtIndex:(NSInteger)index {
+    // 菜单顺序见 NLDrawerModels defaultMenuItems：0 添加帐号 1 新增内容 2 收听统计 3 最近播放 4 设置
+    if (index == 3) {
+        __weak typeof(self) w = self;
+        [controller dismissWithAnimation:YES completion:^{
+            __strong typeof(w) s = w;
+            if (!s) return;
+            NLRecentPlayViewController *vc = [[NLRecentPlayViewController alloc] init];
+            [s.navigationController pushViewController:vc animated:YES];
+        }];
+        return;
+    }
     NSLog(@"[Drawer] 菜单项 %ld", (long)index);
 }
 

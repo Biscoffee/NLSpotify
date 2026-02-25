@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		36C2FE82D5EEE0A3F4F23D39 /* libPods-NLSpotify.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D6918E3454DD5D0EA9443A9B /* libPods-NLSpotify.a */; };
+		1A6A8824221F85FA07136FE7 /* Pods_NLSpotify.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1DDCF1B8B8455F62FC3CEA4E /* Pods_NLSpotify.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,12 +28,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		31285C5A4DAE538204A63130 /* Pods-NLSpotify.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NLSpotify.release.xcconfig"; path = "Target Support Files/Pods-NLSpotify/Pods-NLSpotify.release.xcconfig"; sourceTree = "<group>"; };
+		1DDCF1B8B8455F62FC3CEA4E /* Pods_NLSpotify.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NLSpotify.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C7D81DB2EE3EF46003C5014 /* NLSpotify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NLSpotify.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C7D81F62EE3EF47003C5014 /* NLSpotifyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NLSpotifyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C7D82002EE3EF47003C5014 /* NLSpotifyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NLSpotifyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C15C2CB46AB8113E6C90FAED /* Pods-NLSpotify.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NLSpotify.debug.xcconfig"; path = "Target Support Files/Pods-NLSpotify/Pods-NLSpotify.debug.xcconfig"; sourceTree = "<group>"; };
-		D6918E3454DD5D0EA9443A9B /* libPods-NLSpotify.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-NLSpotify.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB36C18738FA3A555DB85ADB /* Pods-NLSpotify.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NLSpotify.debug.xcconfig"; path = "Target Support Files/Pods-NLSpotify/Pods-NLSpotify.debug.xcconfig"; sourceTree = "<group>"; };
+		C325DE709F81E77BD2770CAF /* Pods-NLSpotify.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NLSpotify.release.xcconfig"; path = "Target Support Files/Pods-NLSpotify/Pods-NLSpotify.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -72,7 +72,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				36C2FE82D5EEE0A3F4F23D39 /* libPods-NLSpotify.a in Frameworks */,
+				1A6A8824221F85FA07136FE7 /* Pods_NLSpotify.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,7 +101,7 @@
 				4C7D82032EE3EF47003C5014 /* NLSpotifyUITests */,
 				4C7D81DC2EE3EF46003C5014 /* Products */,
 				B0C5129F7DEA5E674AA6B5CE /* Pods */,
-				B21E4A5241D496DD3E22619B /* Frameworks */,
+				AA692EF447C63672F15A14B2 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -115,21 +115,21 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AA692EF447C63672F15A14B2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1DDCF1B8B8455F62FC3CEA4E /* Pods_NLSpotify.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B0C5129F7DEA5E674AA6B5CE /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				C15C2CB46AB8113E6C90FAED /* Pods-NLSpotify.debug.xcconfig */,
-				31285C5A4DAE538204A63130 /* Pods-NLSpotify.release.xcconfig */,
+				AB36C18738FA3A555DB85ADB /* Pods-NLSpotify.debug.xcconfig */,
+				C325DE709F81E77BD2770CAF /* Pods-NLSpotify.release.xcconfig */,
 			);
 			path = Pods;
-			sourceTree = "<group>";
-		};
-		B21E4A5241D496DD3E22619B /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				D6918E3454DD5D0EA9443A9B /* libPods-NLSpotify.a */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,11 +139,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4C7D82092EE3EF47003C5014 /* Build configuration list for PBXNativeTarget "NLSpotify" */;
 			buildPhases = (
-				EC0CC7AF3C20543AEBF4FFA6 /* [CP] Check Pods Manifest.lock */,
+				25FCAA0C3D759083A9A3854A /* [CP] Check Pods Manifest.lock */,
 				4C7D81D72EE3EF46003C5014 /* Sources */,
 				4C7D81D82EE3EF46003C5014 /* Frameworks */,
 				4C7D81D92EE3EF46003C5014 /* Resources */,
-				050F6DA2131D8EAB99B3C97B /* [CP] Copy Pods Resources */,
+				155D53BD52250A410EBF513E /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -267,28 +267,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		050F6DA2131D8EAB99B3C97B /* [CP] Copy Pods Resources */ = {
+		155D53BD52250A410EBF513E /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			inputPaths = (
 			);
-			name = "[CP] Copy Pods Resources";
+			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NLSpotify/Pods-NLSpotify-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		EC0CC7AF3C20543AEBF4FFA6 /* [CP] Check Pods Manifest.lock */ = {
+		25FCAA0C3D759083A9A3854A /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -352,7 +352,7 @@
 /* Begin XCBuildConfiguration section */
 		4C7D820A2EE3EF47003C5014 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C15C2CB46AB8113E6C90FAED /* Pods-NLSpotify.debug.xcconfig */;
+			baseConfigurationReference = AB36C18738FA3A555DB85ADB /* Pods-NLSpotify.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -381,7 +381,7 @@
 		};
 		4C7D820B2EE3EF47003C5014 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 31285C5A4DAE538204A63130 /* Pods-NLSpotify.release.xcconfig */;
+			baseConfigurationReference = C325DE709F81E77BD2770CAF /* Pods-NLSpotify.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

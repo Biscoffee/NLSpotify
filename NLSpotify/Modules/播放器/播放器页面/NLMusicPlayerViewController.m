@@ -8,6 +8,9 @@
 #import "NLMusicPlayerView.h"
 #import "NLPlayerManager.h"
 #import "NLSong.h"
+#import "NLSongRepository.h"
+#import "NLPlayListRepository.h"
+#import "NLAddToPlaylistSheetViewController.h"
 #import "NLCommentListViewController.h"
 #import <Masonry/Masonry.h>
 
@@ -68,6 +71,7 @@
             [self.playerView updateCoverURL:song.coverURL];
             [self.playerView updateProgress:0];
             [self.playerView updateCurrentTime:0 totalTime:manager.totalTime];
+            [self.playerView updateFavoriteState:[NLSongRepository isSongLiked:song.songId]];
             if (self.playerView.isQueuePanelVisible) {
                 [self.playerView reloadQueue];
             }
@@ -100,6 +104,7 @@
         [self.playerView updateCoverURL:nil];
         [self.playerView updateProgress:0];
         [self.playerView updateCurrentTime:0 totalTime:0];
+        [self.playerView updateFavoriteState:NO];
         return;
     }
     [self.playerView updateTitle:song.title artist:song.artist];
@@ -115,6 +120,7 @@
     BOOL playing = NLPlayerManager.sharedManager.playbackState == NLPlaybackStatePlaying;
     [self.playerView updatePlayState:playing];
     [self.playerView updatePlayMode:NLPlayerManager.sharedManager.playMode];
+    [self.playerView updateFavoriteState:[NLSongRepository isSongLiked:song.songId]];
 }
 
 
@@ -175,6 +181,24 @@
 - (void)musicPlayerView:(NLMusicPlayerView *)view didChangePlayMode:(NLPlayMode)playMode {
     [view updatePlayMode:playMode];
     [NLPlayerManager.sharedManager setPlayMode:playMode];
+}
+
+- (void)musicPlayerViewDidTapAddToPlaylist:(NLMusicPlayerView *)view {
+    NLSong *song = [NLPlayerManager sharedManager].currentSong;
+    if (!song || !song.songId.length) return;
+
+    NLAddToPlaylistSheetViewController *vc = [[NLAddToPlaylistSheetViewController alloc] init];
+    vc.currentSong = song;
+    [self presentViewController:vc animated:NO completion:nil];
+}
+
+- (void)musicPlayerViewDidTapFavorite:(NLMusicPlayerView *)view {
+    NLSong *song = [NLPlayerManager sharedManager].currentSong;
+    if (!song || !song.songId.length) return;
+    BOOL currentlyLiked = [NLSongRepository isSongLiked:song.songId];
+    BOOL newLiked = !currentlyLiked;
+    [NLSongRepository likeSong:song isLike:newLiked];
+    [view updateFavoriteState:newLiked];
 }
 
 #pragma mark - UIGestureRecognizerDelegate

@@ -8,6 +8,8 @@
 #import "AppDelegate.h"
 #import "NLHomeViewController.h"
 #import "NLTabBarController.h"
+#import "NLDataBaseManager.h"
+#import <IQKeyboardManager/IQKeyboardManager.h>
 @interface AppDelegate ()
 
 @end
@@ -16,6 +18,11 @@
 
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    [NLDataBaseManager sharedManager];
+    [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
+
+        // (可选附加魔法：点击屏幕空白处自动收起键盘，极其好用)
+        [IQKeyboardManager sharedManager].shouldResignOnTouchOutside = YES;
   return YES;
 }
 

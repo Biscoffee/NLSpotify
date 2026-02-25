@@ -15,6 +15,10 @@
 #import "NLSong.h"
 #import "NLSongService.h"
 #import "NLCommentListViewController.h"
+#import "NLPlayListRepository.h"
+#import "NLPlayList.h"
+#import "NLAlbumRepository.h"
+#import "NLAlbum.h"
 #import <Masonry/Masonry.h>
 #import <ReactiveObjC/ReactiveObjC.h>
 
@@ -23,11 +27,18 @@
 @property (nonatomic, assign) NSInteger listId;
 @property (nonatomic, assign) NLSongListType type;
 
+@property (nonatomic, assign) BOOL isLocalPlayList;
+@property (nonatomic, strong) NLPlayList *localPlayList;
+
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<NLListCellModel *> *songs;
 
 @property (nonatomic, strong) NLSongListHeaderView *headerView;
 @property (nonatomic, strong) NLHeaderModel *header;
+
+@property (nonatomic, strong) UIBarButtonItem *favoriteItem;
+@property (nonatomic, assign) BOOL isLikedPlayList;
+@property (nonatomic, assign) BOOL isLikedAlbum;
 
 @end
 
@@ -48,22 +59,47 @@
     return self;
 }
 
+- (instancetype)initWithLocalPlayList:(NLPlayList *)playlist {
+    self = [super init];
+    if (self) {
+        _isLocalPlayList = YES;
+        _localPlayList = playlist;
+        _listId = 0;
+        _type = NLSongListTypePlaylist;
+        self.title = playlist.name;
+        self.songs = [NSMutableArray array];
+    }
+    return self;
+}
+
 #pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor systemBackgroundColor];
-    [self setupNavigationBarAppearance];
+    [self setupNavigationBar];
     [self.view addSubview:self.tableView];
 
     [self setupConstraints];
     [self setupNavigation];
-    [self requestData];
+    if (self.isLocalPlayList) {
+        [self loadLocalPlayListData];
+    } else {
+        if (self.type == NLSongListTypeAlbum) {
+            NSString *aid = [NSString stringWithFormat:@"%ld", (long)self.listId];
+            self.isLikedAlbum = [NLAlbumRepository isAlbumLiked:aid];
+            [self refreshFavoriteButton];
+        }
+        [self requestData];
+    }
 
-    __weak typeof(self) weakSelf = self;
-    [[NLPlayerManager sharedManager].songSignal subscribeNext:^(NLSong * _Nullable song) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (strongSelf) [strongSelf scrollToCurrentPlayingSong];
+    //__weak typeof(self) weakSelf = self;
+    @weakify(self);
+    //  订阅当前播放歌曲
+    [[[NLPlayerManager sharedManager].songSignal deliverOnMainThread] subscribeNext:^(NLSong * _Nullable song) {
+        //__strong typeof(weakSelf) strongSelf = weakSelf;
+        @strongify(self);
+        if (self && song) [self scrollToCurrentPlayingSong];
     }];
 }
 
@@ -84,7 +120,7 @@
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
 }
 
-- (void)setupNavigationBarAppearance {
+- (void)setupNavigationBar {
     UINavigationBar *bar = self.navigationController.navigationBar;
     bar.translucent = YES;
     bar.barTintColor = nil;
@@ -96,12 +132,62 @@
 }
 
 - (void)setupNavigation {
-    UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"plus"] style:UIBarButtonItemStylePlain target:self action:@selector(addTapped)];
     UIBarButtonItem *commentItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"text.bubble"] style:UIBarButtonItemStylePlain target:self action:@selector(openCommentTapped)];
-    self.navigationItem.rightBarButtonItems = @[ commentItem, addItem ];
+    if (self.isLocalPlayList) {
+        // 本地歌单：暂时不提供收藏/评论入口，只复用 UI 布局
+        self.navigationItem.rightBarButtonItems = @[];
+    } else {
+        // 歌单|| 专辑 ：右上角改为收藏星标
+        self.favoriteItem = [[UIBarButtonItem alloc] initWithImage:nil style:UIBarButtonItemStylePlain target:self action:@selector(favoriteTapped)];
+        self.navigationItem.rightBarButtonItems = @[ commentItem, self.favoriteItem ];
+        [self refreshFavoriteButton];
+    }
 }
 
-- (void)addTapped { /* 加入歌单等 */ }
+- (void)addTapped { NSLog(@"This 'Plus' Button is scrapped"); }
+
+- (NSString *)currentPlayListIdString {
+    if (self.type != NLSongListTypePlaylist) return nil;
+    return [NSString stringWithFormat:@"%ld", (long)self.listId];
+}
+
+- (void)refreshFavoriteButton {
+    if (!self.favoriteItem) return;
+    BOOL liked = (self.type == NLSongListTypePlaylist) ? self.isLikedPlayList : self.isLikedAlbum;
+    NSString *iconName = liked ? @"star.fill" : @"star";
+    UIImage *img = [UIImage systemImageNamed:iconName];
+    self.favoriteItem.image = img;
+}
+
+- (void)favoriteTapped {
+    if (self.type == NLSongListTypePlaylist) {
+        NSString *playlistId = [self currentPlayListIdString];
+        if (playlistId.length == 0) return;
+        NLPlayList *playList = [[NLPlayList alloc] initWithId:playlistId
+                                                         name:self.header.name.length ? self.header.name : (self.title ?: @"歌单")
+                                                  isUserCreated:NO];
+        playList.coverURL = self.header.coverUrl ?: @"";
+        playList.createTime = [[NSDate date] timeIntervalSince1970];
+        BOOL newLiked = !self.isLikedPlayList;
+        if ([NLPlayListRepository setPlayList:playList liked:newLiked]) {
+            self.isLikedPlayList = newLiked;
+            [self refreshFavoriteButton];
+        }
+        return;
+    }
+    if (self.type == NLSongListTypeAlbum) {
+        NSString *albumId = [NSString stringWithFormat:@"%ld", (long)self.listId];
+        NLAlbum *album = [[NLAlbum alloc] initWithAlbumId:albumId
+                                                    name:self.header.name.length ? self.header.name : (self.title ?: @"专辑")
+                                                coverURL:self.header.coverUrl ?: @""
+                                             artistName:self.header.creatorName ?: @""];
+        BOOL newLiked = !self.isLikedAlbum;
+        if ([NLAlbumRepository setAlbum:album liked:newLiked]) {
+            self.isLikedAlbum = newLiked;
+            [self refreshFavoriteButton];
+        }
+    }
+}
 
 #pragma mark - 评论区入口
 
@@ -131,7 +217,6 @@
         self.headerView = [[NLSongListHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 570)];
         self.headerView.delegate = self;
     }
-
     [self.headerView configWithPlayList:self.header];
     [self updateHeaderViewHeight];
 }
@@ -147,7 +232,7 @@
     [self.headerView setNeedsLayout];// 强制布局
     [self.headerView layoutIfNeeded];
     
-    // 测量实际需要的高度
+    // 测量实际需要的高度,使用 systemLayoutSizeFittingSize，iOS自适应高度标准方案
     CGSize fitSize = [self.headerView systemLayoutSizeFittingSize:CGSizeMake(w, UILayoutFittingCompressedSize.height)];
     CGFloat headerHeight = fitSize.height > 0 ? fitSize.height : maxH;
     
@@ -156,7 +241,6 @@
         // 收起状态：限制在 3/4 屏高
         headerHeight = (CGFloat)fmin(headerHeight, maxH);
     }
-    // 更新 frame 并重新设置 tableHeaderView
     self.headerView.frame = CGRectMake(0, 0, w, headerHeight);
     self.tableView.tableHeaderView = nil;
     self.tableView.tableHeaderView = self.headerView;
@@ -182,12 +266,60 @@
     }
 }
 
+#pragma mark - Local PlayList
+
+- (void)loadLocalPlayListData {
+    if (!self.localPlayList.playlistId.length) {
+        [self.songs removeAllObjects];
+        [self.tableView reloadData];
+        return;
+    }
+
+    NLHeaderModel *header = [[NLHeaderModel alloc] init];
+    header.playlistId = 0;
+    header.name = self.localPlayList.name ?: @"歌单";
+    header.coverUrl = self.localPlayList.coverURL ?: @"";
+    header.desc = @"";
+    header.hideDescription = YES;
+    header.creatorName = @"";
+    header.creatorAvatar = @"";
+    self.header = header;
+
+    // 从本地歌单里取出歌曲，并转成 NLListCellModel
+    NSArray<NLSong *> *songs = [NLPlayListRepository songsInPlayList:self.localPlayList.playlistId];
+    [self.songs removeAllObjects];
+    for (NLSong *song in songs) {
+        NLListCellModel *model = [[NLListCellModel alloc] init];
+        model.songId = song.songId.integerValue;
+        model.name = song.title ?: @"";
+        model.artistName = song.artist ?: @"";
+        model.albumName = @""; // 本地歌单暂时不展示专辑名
+        model.coverUrl = song.coverURL.absoluteString ?: @"";
+        model.duration = 0;
+        [self.songs addObject:model];
+    }
+
+    [self setupTableHeader];
+    [self.tableView reloadData];
+    [self scrollToCurrentPlayingSong];
+}
+
 - (void)handleResponse:(NLHeaderModel *)header
                 songs:(NSArray<NLListCellModel *> *)songs {
     self.header = header;
+    if (self.type == NLSongListTypePlaylist) {
+        NSString *pid = [NSString stringWithFormat:@"%ld", (long)header.playlistId];
+        self.isLikedPlayList = [NLPlayListRepository isPlayListLiked:pid];
+        [self refreshFavoriteButton];
+    } else if (self.type == NLSongListTypeAlbum) {
+        NSString *aid = [NSString stringWithFormat:@"%ld", (long)self.listId];
+        self.isLikedAlbum = [NLAlbumRepository isAlbumLiked:aid];
+        [self refreshFavoriteButton];
+    }
+    //更新歌曲
     [self.songs removeAllObjects];
     [self.songs addObjectsFromArray:songs];
-
+    //刷新headerView，并滚动到特定位置
     [self setupTableHeader];
     [self.tableView reloadData];
     [self scrollToCurrentPlayingSong];
@@ -236,6 +368,7 @@
         NLSong *song = [NLSong songWithListCellModel:model];
         if (song) [list addObject:song];
     }
+    //  洗牌，用于随机播放
     if (shuffle && list.count > 1) {
         for (NSInteger i = list.count - 1; i >= 1; i--) {
             NSInteger j = arc4random_uniform((uint32_t)(i + 1));
@@ -269,10 +402,8 @@
 
 - (void)playSongAtIndex:(NSInteger)index {
     if (index < 0 || index >= self.songs.count) return;
-    
     NSMutableArray<NLSong *> *songList = [self buildSongListShuffled:NO];
     if (songList.count == 0) return;
-    
     [self playSongList:songList startIndex:index];
 }
 

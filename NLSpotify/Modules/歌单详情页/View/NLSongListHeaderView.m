@@ -19,6 +19,9 @@
 @property (nonatomic, strong) UIButton *shuffleButton;
 @property (nonatomic, strong) UILabel *descLabel;
 @property (nonatomic, strong) UIButton *expandDescButton;
+@property (nonatomic, strong) MASConstraint *descAreaTopConstraint;
+@property (nonatomic, strong) MASConstraint *descLabelHeightConstraint;
+@property (nonatomic, strong) MASConstraint *expandButtonHeightConstraint;
 
 @property (nonatomic, copy) NSString *fullDescText;
 @property (nonatomic, assign, readwrite) BOOL descExpanded;
@@ -134,16 +137,17 @@
     }];
 
     [_descLabel mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(_playAllButton.mas_bottom).offset(16);
+        _descAreaTopConstraint = make.top.equalTo(_playAllButton.mas_bottom).offset(16);
         make.left.equalTo(self).offset(24);
         make.right.equalTo(self).offset(-24);
+        _descLabelHeightConstraint = make.height.mas_equalTo(0).priority(UILayoutPriorityDefaultLow);
     }];
     
     [_expandDescButton mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(_descLabel.mas_bottom).offset(4);
         make.left.equalTo(_descLabel);
         make.bottom.equalTo(self).offset(-24).priority(UILayoutPriorityDefaultHigh);
-        make.height.mas_equalTo(28);
+        _expandButtonHeightConstraint = make.height.mas_equalTo(28);
     }];
 }
 
@@ -228,6 +232,28 @@
 
     _titleLabel.text = playlist.name;
     _subtitleLabel.text = playlist.creatorName.length ? playlist.creatorName : @"歌单";
+
+    if (playlist.hideDescription) {
+        _descLabel.hidden = YES;
+        _descLabel.text = @"";
+        _expandDescButton.hidden = YES;
+        [_descAreaTopConstraint setOffset:0];
+        [_descLabelHeightConstraint uninstall];
+        [_descLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+            _descLabelHeightConstraint = make.height.mas_equalTo(0).priority(UILayoutPriorityRequired);
+        }];
+        [_expandDescButton mas_updateConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(0);
+        }];
+        return;
+    }
+
+    _descLabel.hidden = NO;
+    [_descAreaTopConstraint setOffset:16];
+    [_descLabelHeightConstraint uninstall];
+    [_descLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        _descLabelHeightConstraint = make.height.mas_equalTo(0).priority(UILayoutPriorityDefaultLow);
+    }];
     _fullDescText = playlist.desc.length ? playlist.desc : @"暂无介绍";
     _descLabel.text = _fullDescText;
     _descExpanded = NO;
@@ -248,15 +274,16 @@
 - (void)updateExpandButtonVisibility {
     if (_fullDescText.length == 0) {
         _expandDescButton.hidden = YES;
+        [_expandDescButton mas_updateConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(0);
+        }];
         return;
     }
     
-    CGFloat width = [UIScreen mainScreen].bounds.size.width - 48; // 左右各24pt边距
-    CGFloat lineHeight = _descLabel.font.lineHeight; // 单行高度
-    CGFloat threeLineHeight = lineHeight * 3 + 4; // 3行高度 + 间距
+    CGFloat width = [UIScreen mainScreen].bounds.size.width - 48;
+    CGFloat lineHeight = _descLabel.font.lineHeight;
+    CGFloat threeLineHeight = lineHeight * 3 + 4;
     
-    // 测量文本实际需要的高度
-    // 假设一个无限高的空间 (CGFLOAT_MAX) 和我刚才算好的宽度 指定的字体 (_descLabel.font) 把这段完整的文本排版一次，需要多大的矩形框 (fitRect)？”
     CGSize maxSize = CGSizeMake(width, CGFLOAT_MAX);
     CGRect fitRect = [_fullDescText boundingRectWithSize:maxSize
                                                 options:NSStringDrawingUsesLineFragmentOrigin
@@ -266,7 +293,6 @@
     BOOL needsExpand = fitRect.size.height > threeLineHeight;
     _expandDescButton.hidden = !needsExpand;
     
-    // 根据是否需要展开，设置按钮高度，直接设置hidden可能会导致Mansory出故障
     [_expandDescButton mas_updateConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(needsExpand ? 28 : 0);
     }];

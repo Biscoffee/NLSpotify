@@ -459,6 +459,12 @@
     self.alpha = 1.0 - dismissProgress * 0.2;
 }
 
+- (void)updateFavoriteState:(BOOL)liked {
+    NSString *iconName = liked ? @"star.fill" : @"star";
+    [self.favoriteButton setImage:[UIImage systemImageNamed:iconName] forState:UIControlStateNormal];
+    self.favoriteButton.tintColor = liked ? [UIColor systemYellowColor] : [UIColor labelColor];
+}
+
 - (void)updatePlayMode:(NLPlayMode)playMode {
     self.playMode = playMode;
     [self updateQueueModeButtonsSelection];
@@ -519,7 +525,9 @@
 #pragma mark - Actions && Delegate
 
 - (void)favoriteTapped {
-    // 切换收藏状态
+    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapFavorite:)]) {
+        [self.delegate musicPlayerViewDidTapFavorite:self];
+    }
 }
 
 - (void)moreTapped {
@@ -721,9 +729,9 @@
 #pragma mark - 事件响应
 
 - (void)addToPlaylistTapped {
-//    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapAddToPlaylist:)]) {
-//        [self.delegate musicPlayerViewDidTapAddToPlaylist:self];
-//    }
+    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapAddToPlaylist:)]) {
+        [self.delegate musicPlayerViewDidTapAddToPlaylist:self];
+    }
 }
 
 - (void)playModeTapped {
