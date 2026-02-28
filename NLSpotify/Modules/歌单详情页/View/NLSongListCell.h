@@ -7,7 +7,7 @@
 
 #import <UIKit/UIKit.h>
 
-@class NLListCellModel, NLSong, NLPlayList, NLAlbum;
+@class NLListCellModel, NLSong, NLPlayList, NLAlbum, NLDownloadItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,6 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)configWithPlayList:(NLPlayList *)playList;
 /// 用同一套 UI 展示专辑（封面 + 标题 + 艺人名）
 - (void)configWithAlbum:(NLAlbum *)album;
+/// 下载项：progress 0~1 为下载中并显示进度条，<0 或 >=1 不显示进度条
+- (void)configWithDownloadItem:(NLDownloadItem *)item downloadProgress:(float)progress;
 
 @end
 

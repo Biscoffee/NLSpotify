@@ -7,11 +7,13 @@
 #import "NLMusicPlayerViewController.h"
 #import "NLMusicPlayerView.h"
 #import "NLPlayerManager.h"
+#import "NLCacheManager.h"
 #import "NLSong.h"
 #import "NLSongRepository.h"
 #import "NLPlayListRepository.h"
 #import "NLAddToPlaylistSheetViewController.h"
 #import "NLCommentListViewController.h"
+#import "NLDownloadManager.h"
 #import <Masonry/Masonry.h>
 
 @interface NLMusicPlayerViewController () <NLMusicPlayerViewDelegate, UIGestureRecognizerDelegate>
@@ -70,6 +72,7 @@
             [self.playerView updateTitle:song.title artist:song.artist];
             [self.playerView updateCoverURL:song.coverURL];
             [self.playerView updateProgress:0];
+            [self.playerView updateCacheProgress:0];
             [self.playerView updateCurrentTime:0 totalTime:manager.totalTime];
             [self.playerView updateFavoriteState:[NLSongRepository isSongLiked:song.songId]];
             if (self.playerView.isQueuePanelVisible) {
@@ -94,6 +97,14 @@
             [self.playerView updateCurrentTime:manager.currentTime
                                      totalTime:manager.totalTime];
         }];
+
+    // 缓存进度
+        [manager.cacheProgressSignal subscribeNext:^(NSNumber *progressNum) {
+            @strongify(self);
+            if ([progressNum isKindOfClass:[NSNumber class]]) {
+                [self.playerView updateCacheProgress:progressNum.floatValue];
+            }
+        }];
 }
 
 
@@ -102,15 +113,20 @@
     if (!song) {
         [self.playerView updateTitle:@"未在播放" artist:@""];
         [self.playerView updateCoverURL:nil];
-        [self.playerView updateProgress:0];
-        [self.playerView updateCurrentTime:0 totalTime:0];
-        [self.playerView updateFavoriteState:NO];
+    [self.playerView updateProgress:0];
+    [self.playerView updateCacheProgress:0];
+    [self.playerView updateCurrentTime:0 totalTime:0];
+    [self.playerView updateFavoriteState:NO];
         return;
     }
     [self.playerView updateTitle:song.title artist:song.artist];
     [self.playerView updateCoverURL:song.coverURL];
     float progress = NLPlayerManager.sharedManager.currentProgress;
     [self.playerView updateProgress:progress];
+    NSURL *url = song.playURL;
+    float cacheProgress = url ? [[NLCacheManager sharedManager] cacheProgressForURL:url] : 0.f;
+    NSLog(@"[缓存条] refreshUI 设置缓存条 progress=%.2f url=%@", cacheProgress, url.absoluteString ?: @"");
+    [self.playerView updateCacheProgress:cacheProgress];
 
     NSTimeInterval currentTime = NLPlayerManager.sharedManager.currentTime;
     NSTimeInterval totalTime = NLPlayerManager.sharedManager.totalTime;
@@ -199,6 +215,47 @@
     BOOL newLiked = !currentlyLiked;
     [NLSongRepository likeSong:song isLike:newLiked];
     [view updateFavoriteState:newLiked];
+}
+
+- (void)musicPlayerViewDidTapMore:(NLMusicPlayerView *)view {
+    NLSong *song = [NLPlayerManager sharedManager].currentSong;
+    if (!song || !song.songId.length) return;
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [alert addAction:[UIAlertAction actionWithTitle:@"下载" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [[NLDownloadManager sharedManager] addDownloadForSong:song];
+        [self showToast:@"已加入下载"];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        alert.popoverPresentationController.sourceView = view;
+        alert.popoverPresentationController.sourceRect = CGRectMake(view.bounds.size.width - 60, 80, 1, 1);
+    }
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)showToast:(NSString *)text {
+    UIView *toast = [[UIView alloc] init];
+    toast.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.75];
+    toast.layer.cornerRadius = 10;
+    toast.alpha = 0;
+    UILabel *label = [[UILabel alloc] init];
+    label.text = text;
+    label.font = [UIFont systemFontOfSize:15];
+    label.textColor = [UIColor whiteColor];
+    [toast addSubview:label];
+    [label mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(toast).insets(UIEdgeInsetsMake(12, 20, 12, 20));
+    }];
+    [self.view addSubview:toast];
+    [toast mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.center.equalTo(self.view);
+    }];
+    [UIView animateWithDuration:0.2 animations:^{ toast.alpha = 1; }];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.25 animations:^{ toast.alpha = 0; } completion:^(BOOL finished) {
+            [toast removeFromSuperview];
+        }];
+    });
 }
 
 #pragma mark - UIGestureRecognizerDelegate

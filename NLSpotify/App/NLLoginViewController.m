@@ -7,7 +7,8 @@
 
 #import "NLLoginViewController.h"
 #import "NLTabBarController.h"
-#import "NLPhoneLoginViewController.h"
+
+#import "NLAuthManager.h"
 #import <Masonry/Masonry.h>
 #import "NLGuestLoginService.h"
 
@@ -117,8 +118,6 @@
             make.centerY.equalTo(button);
             make.width.height.mas_equalTo(24);
         }];
-
-        // 调整标题位置
         button.titleEdgeInsets = UIEdgeInsetsMake(0, 8, 0, 0);
     } else {
         // 没有图标，居中显示标题
@@ -128,16 +127,17 @@
     return button;
 }
 
-- (void)phoneLoginTapped {
-    NSLog(@"手机号登录");
-    NLPhoneLoginViewController *phoneLoginVC = [[NLPhoneLoginViewController alloc] init];
-    [self.navigationController pushViewController:phoneLoginVC animated:YES];
-}
+
 
 #pragma mark - Button Actions
 
 - (void)backButtonTapped {
     [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)phoneLoginTapped {
+    NSLog(@"手机号登录");
+    [self showLoginAlert];
 }
 
 - (void)emailLoginTapped {
@@ -162,14 +162,23 @@
 
 - (void)registerButtonTapped {
     NSLog(@"注册按钮点击");
-    // TODO: 跳转到注册页面
+    [self showLoginAlert];
 }
 
 - (void)guestLoginTapped {
     __weak typeof(self) weakSelf = self;
     [NLGuestLoginService anonymousLoginWithSuccess:^(NSDictionary *response) {
+        NSString *cookie = response[@"cookie"];
+        if (cookie.length > 0) {
+            [NLAuthManager setCookie:cookie];
+            // NSLog(@"[游客登录] 已取到 cookie，长度=%lu", (unsigned long)cookie.length); // 专注播放器时先注释
+        } else {
+            // NSLog(@"[游客登录] 登录成功但响应中无 cookie，code=%@", response[@"code"]); // 专注播放器时先注释
+        }
+        [NLAuthManager setLoginStateWithAccount:response[@"account"]];
         [weakSelf loginSuccess];
     } failure:^(NSError *error) {
+        NSLog(@"[游客登录] 失败，未取到 cookie，错误: %@", error.localizedDescription);
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"游客登录失败"
                                                                        message:error.localizedDescription
                                                                 preferredStyle:UIAlertControllerStyleAlert];
@@ -179,29 +188,17 @@
 }
 
 - (void)showLoginAlert {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"登录"
-                                                                   message:@"模拟登录成功！"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"                           错误"
+                                                                   message:@"当前不支持该方式登录"
                                                             preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction *loginAction = [UIAlertAction actionWithTitle:@"登录" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [self loginSuccess];
-    }];
-
     UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil];
-
-    [alert addAction:loginAction];
     [alert addAction:cancelAction];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)loginSuccess {
-    // 保存登录状态
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"isLoggedIn"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-
     // 切换到主页面
     NLTabBarController *tabBarController = [[NLTabBarController alloc] init];
-
     // 动画切换
     CATransition *transition = [CATransition animation];
     transition.duration = 0.5;

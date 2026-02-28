@@ -10,11 +10,13 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, NLMusicLibraryListMode) {
-    NLMusicLibraryListModeRecentPlay,     // 播放历史（歌曲列表）
-    NLMusicLibraryListModeLikedPlaylists, // 收藏的歌单
-    NLMusicLibraryListModeMyPlaylists,    // 创建的歌单（右上角有加号）
-    NLMusicLibraryListModeLikedAlbums,    // 我收藏的专辑
-    NLMusicLibraryListModeLikedSongs      // 歌曲（我喜欢的歌曲）
+    NLMusicLibraryListModeRecentPlay,       // 播放历史（歌曲列表）
+    NLMusicLibraryListModeLikedPlaylists,   // 收藏的歌单
+    NLMusicLibraryListModeMyPlaylists,      // 创建的歌单（右上角有加号）
+    NLMusicLibraryListModeCachedSongs,      // 缓存（已完全缓存并转为 mp3 的歌曲）
+    NLMusicLibraryListModeDownloadedSongs,  // 我下载的音乐（含下载中进度）
+    NLMusicLibraryListModeLikedAlbums,      // 我收藏的专辑
+    NLMusicLibraryListModeLikedSongs        // 歌曲（我喜欢的歌曲）
 };
 
 @interface NLMusicLibraryListViewController : UIViewController

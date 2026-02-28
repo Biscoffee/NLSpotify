@@ -219,6 +219,7 @@ static const CGFloat kPlaylistCoverSize = 40.0;
             if (pl) {
                 [NLPlayListRepository addSong:self.currentSong toPlayList:pl.playlistId];
                 [self loadPlaylists];
+                [self showToast:@"收藏成功"];
             }
         };
         [self presentViewController:vc animated:YES completion:nil];
@@ -227,11 +228,37 @@ static const CGFloat kPlaylistCoverSize = 40.0;
 
     NLPlayList *pl = self.playlists[indexPath.row - 1];
     [NLPlayListRepository addSong:self.currentSong toPlayList:pl.playlistId];
+    [self showToast:@"收藏成功"];
     [self dismissSelf];
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     return 60;
+}
+
+- (void)showToast:(NSString *)text {
+    UIView *toast = [[UIView alloc] init];
+    toast.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.75];
+    toast.layer.cornerRadius = 10;
+    toast.alpha = 0;
+    UILabel *label = [[UILabel alloc] init];
+    label.text = text;
+    label.font = [UIFont systemFontOfSize:15];
+    label.textColor = [UIColor whiteColor];
+    [toast addSubview:label];
+    [label mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(toast).insets(UIEdgeInsetsMake(12, 20, 12, 20));
+    }];
+    [self.view addSubview:toast];
+    [toast mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.center.equalTo(self.view);
+    }];
+    [UIView animateWithDuration:0.2 animations:^{ toast.alpha = 1; }];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.25 animations:^{ toast.alpha = 0; } completion:^(BOOL finished) {
+            [toast removeFromSuperview];
+        }];
+    });
 }
 
 @end

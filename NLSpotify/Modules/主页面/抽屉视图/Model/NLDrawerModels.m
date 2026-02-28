@@ -30,7 +30,9 @@
         [self itemWithIcon:@"bolt.fill" title:@"新增内容" highlightNew:NO],
         [self itemWithIcon:@"chart.line.uptrend.xyaxis" title:@"收听统计信息・新增" highlightNew:YES],
         [self itemWithIcon:@"clock.arrow.circlepath" title:@"最近播放" highlightNew:NO],
-        [self itemWithIcon:@"gearshape.fill" title:@"设置和隐私" highlightNew:NO]
+        [self itemWithIcon:@"gearshape.fill" title:@"设置和隐私" highlightNew:NO],
+        [self itemWithIcon:@"trash" title:@"一键清空" highlightNew:NO],
+        [self itemWithIcon:@"rectangle.portrait.and.arrow.right" title:@"退出登录" highlightNew:NO]
     ];
 }
 @end

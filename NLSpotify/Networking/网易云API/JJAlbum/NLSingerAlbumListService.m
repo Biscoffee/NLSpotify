@@ -30,7 +30,7 @@
 
       //NLSingerAlbumListModel *model = [[NLSingerAlbumListModel alloc] init];
         NSArray *hotAlbums = responseObject[@"hotAlbums"];
-      NSLog(@"%@", hotAlbums);
+      // NSLog(@"%@", hotAlbums); // 专注播放器时先注释
         NSMutableArray *resultArray = [NSMutableArray array];
 
         for (NSDictionary *albumDict in hotAlbums) {
@@ -48,7 +48,7 @@
           model.subtitle = company.length > 0 ? company : @"推荐歌单";
 
           [resultArray addObject:model];
-          NSLog(@"zuihou:::%@", model);
+          // NSLog(@"zuihou:::%@", model); // 专注播放器时先注释
         }
 
         if (success) {

@@ -9,6 +9,8 @@
 #import "NLHomeViewController.h"
 #import "NLTabBarController.h"
 #import "NLDataBaseManager.h"
+#import "NLAuthManager.h"
+#import "NLCacheManager.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
 @interface AppDelegate ()
 
@@ -19,11 +21,16 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [NLDataBaseManager sharedManager];
+    [[NLCacheManager sharedManager] cleanCacheWithMaxSize:500 * 1024 * 1024];
     [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
-
-        // (可选附加魔法：点击屏幕空白处自动收起键盘，极其好用)
-        [IQKeyboardManager sharedManager].shouldResignOnTouchOutside = YES;
-  return YES;
+    [IQKeyboardManager sharedManager].shouldResignOnTouchOutside = YES;
+    NSString *cookie = [NLAuthManager currentCookie];
+    if (cookie.length > 0) {
+        NSLog(@"[App 启动] 已登录，当前 cookie 长度=%lu", (unsigned long)cookie.length);
+    } else {
+        NSLog(@"[App 启动] 未取到 cookie，当前为未登录状态");
+    }
+    return YES;
 }
 
 

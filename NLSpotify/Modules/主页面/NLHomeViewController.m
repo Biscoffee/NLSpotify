@@ -14,6 +14,12 @@
 #import "NLSongListViewController.h"
 #import "NLDrawerViewController.h"
 #import "NLRecentPlayViewController.h"
+#import "NLLoginViewController.h"
+#import "NLAuthManager.h"
+#import "NLCacheManager.h"
+#import "NLDownloadManager.h"
+#import "NLDownloadRepository.h"
+#import "NLSongRepository.h"
 
 @interface NLHomeViewController () <NLDrawerViewControllerDelegate>
 @property (nonatomic, strong) NLDrawerViewController *drawerVC;
@@ -54,7 +60,7 @@
 #pragma mark - NLDrawerViewControllerDelegate
 
 - (void)drawerController:(NLDrawerViewController *)controller didSelectMenuAtIndex:(NSInteger)index {
-    // 菜单顺序见 NLDrawerModels defaultMenuItems：0 添加帐号 1 新增内容 2 收听统计 3 最近播放 4 设置
+    // 菜单顺序：0 添加帐号 1 新增内容 2 收听统计 3 最近播放 4 设置 5 一键清空 6 退出登录
     if (index == 3) {
         __weak typeof(self) w = self;
         [controller dismissWithAnimation:YES completion:^{
@@ -62,6 +68,20 @@
             if (!s) return;
             NLRecentPlayViewController *vc = [[NLRecentPlayViewController alloc] init];
             [s.navigationController pushViewController:vc animated:YES];
+        }];
+        return;
+    }
+    if (index == 5) {
+        __weak typeof(self) w = self;
+        [controller dismissWithAnimation:YES completion:^{
+            [w showClearAllConfirmation];
+        }];
+        return;
+    }
+    if (index == 6) {
+        __weak typeof(self) w = self;
+        [controller dismissWithAnimation:YES completion:^{
+            [w showLogoutConfirmation];
         }];
         return;
     }
@@ -78,6 +98,53 @@
 
 - (void)drawerControllerDidTapNewMessage:(NLDrawerViewController *)controller {
     NSLog(@"[Drawer] 点击新消息");
+}
+
+- (void)showClearAllConfirmation {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"一键清空"
+                                                                   message:@"将清除所有缓存与已下载音乐，且无法恢复。确定继续吗？"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) w = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"清空" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        [w performClearAll];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)performClearAll {
+    [[NLDownloadManager sharedManager] cancelAllDownloads];
+    [NLDownloadRepository clearAllDownloadItems];
+    [NLSongRepository clearAllDownloadedSongs];
+    [[NLCacheManager sharedManager] clearAllCache];
+}
+
+- (void)showLogoutConfirmation {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"退出登录"
+                                                                   message:@"确定要退出登录吗？"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) w = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        [w performLogout];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)performLogout {
+    [NLAuthManager logout];
+
+    NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:loginVC];
+    nav.navigationBarHidden = YES;
+
+    UIWindow *window = self.view.window ?: [UIApplication sharedApplication].windows.firstObject;
+    if (!window) return;
+    CATransition *transition = [CATransition animation];
+    transition.duration = 0.5;
+    transition.type = kCATransitionFade;
+    [window.layer addAnimation:transition forKey:kCATransition];
+    window.rootViewController = nav;
 }
 
 #pragma mark - Layout & Data
@@ -201,7 +268,6 @@
 }
 
 - (void)handleSingerAlbumSelected:(NLSingerAlbumListModel *)model {
-
     NSLog(@"[Home] 点击歌手专辑: %@", model.title);
     NLSongListViewController *vc = [[NLSongListViewController alloc] initWithId:model.cardId type:NLSongListTypeAlbum name:model.title];
     [self.navigationController pushViewController:vc animated:YES];

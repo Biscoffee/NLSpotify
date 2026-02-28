@@ -22,7 +22,6 @@ typedef void(^FailureBlock)(NSError *error);
 
 @interface NetWorkManager : NSObject
 
-//@property (nonatomic, strong) AFHTTPSessionManager *sessionManager;
 +(id)sharedManager;
 - (void)GET:(NSString *)url
  parameters:(NSDictionary *)params

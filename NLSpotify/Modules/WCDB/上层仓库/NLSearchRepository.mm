@@ -23,12 +23,9 @@ static NSString * const kSearchHistoryTableName = @"SearchHistoryTable";
     if (keyword.length == 0) return NO;
 
     NLSearchRecord *record = [[NLSearchRecord alloc] initWithKeyword:keyword];
-
-    // 2. ✨ v2 API 写入：因为我们设置了 keyword 为主键，
-    // 所以同一个词再次搜索时，不会生成两条数据，而是自动刷新它的 timestamp！
     BOOL result = [[self safeDatabase] insertOrReplaceObject:record intoTable:kSearchHistoryTableName];
 
-    if (!result) NSLog(@"❌ 保存搜索记录失败");
+    if (!result) NSLog(@"保存搜索记录失败");
     return result;
 }
 

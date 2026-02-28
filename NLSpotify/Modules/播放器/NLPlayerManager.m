@@ -9,6 +9,8 @@
 #import "NLSongService.h"
 #import "NLSongRepository.h"
 #import "SDWebImage/SDWebImage.h"
+#import "NLResourceLoader.h"
+#import "NLCacheManager.h"
 
 
 //NSString * const NLPlayerSongDidChangeNotification = @"NLPlayerSongDidChangeNotification";//  歌曲换了，用于通知刷新UI
@@ -27,10 +29,17 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 @property (nonatomic, strong) RACSubject<NSNumber *> *playbackStateSubject;
 @property (nonatomic, strong) RACSubject<NLSong *> *songSubject;
 @property (nonatomic, strong) RACSubject<NSNumber *> *progressSubject;
+@property (nonatomic, strong) RACSubject<NSNumber *> *cacheProgressSubject;
+@property (nonatomic, strong) NLResourceLoader *resourceLoader;
+@property (nonatomic, strong) NLResourceLoader *nextResourceLoader;
+@property (nonatomic, strong) AVPlayerItem *nextPlayerItem;
+@property (nonatomic, assign) NSInteger preloadedNextIndex; // -1 表示未预加载
 
 @property (nonatomic, strong) id timeObserver;
 @property (nonatomic, weak) AVPlayerItem *observedItem; // 当前被 KVO 的 item，用于移除观察
 @property (nonatomic, strong) id endTimeObserver;       // 播放结束观察
+@property (nonatomic, assign) float lastLoggedCacheProgress; // 用于缓存跟踪日志，仅变化时打印
+@property (nonatomic, copy) NSString *lastLoggedCacheURL;    // 上一首打印时的 URL，切歌后重新打印
 @end
 
 @implementation NLPlayerManager
@@ -49,13 +58,16 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     if (self = [super init]) {
         _volume = 0.8f;
         _playMode = NLPlayModeListLoop;
+        _preloadedNextIndex = -1;
         _playbackStateSubject = [RACSubject subject];
         _songSubject = [RACSubject subject];
         _progressSubject = [RACSubject subject];
+        _cacheProgressSubject = [RACSubject subject];
 
         _playbackStateSignal = _playbackStateSubject;
         _songSignal = _songSubject;
         _progressSignal = _progressSubject;
+        _cacheProgressSignal = _cacheProgressSubject;
         [self setupAudioSession];
         [self setupRemoteCommands];
         [self updateNowPlayingInfo];
@@ -96,6 +108,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     if (!playlist || playlist.count == 0 || index < 0 || index >= playlist.count) {
         return;
     }
+    [self clearPreloadedItem];
     self.playlist = playlist;
     self.currentIndex = index;
     NLSong *song = playlist[index];
@@ -112,31 +125,98 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     [self updateNowPlayingInfo];
 }
 
+//- (void)playWithURL:(NSURL *)url {
+//    AVPlayerItem *item = [AVPlayerItem playerItemWithURL:url];
+//    
+//    [self uninstallCurrentItemObserver];
+//    
+//    if (!self.player) {
+//        self.player = [[AVPlayer alloc] initWithPlayerItem:item];
+//        [self addPeriodicTimeObserver];
+//    } else {
+//        [self.player replaceCurrentItemWithPlayerItem:item];
+//        if (!self.timeObserver) {
+//            [self addPeriodicTimeObserver];
+//        }
+//    }
+//    
+//    [self observeCurrentItemForReady:item];
+//    [self observeCurrentItemForEnd:item];
+//    self.player.volume = self.volume;
+//    [self setPlaybackState:NLPlaybackStatePlaying];
+//    [self.player play];
+//    
+//    // 先更新一次（标题、艺人、占位图等），时长和封面在 item ready / 图加载完后再更新
+//    [self updateNowPlayingInfo];
+//}
+
+
 - (void)playWithURL:(NSURL *)url {
-    AVPlayerItem *item = [AVPlayerItem playerItemWithURL:url];
-    
+    [self.cacheProgressSubject sendNext:@(0.f)];
+    self.lastLoggedCacheURL = nil;
+    self.lastLoggedCacheProgress = -1.f;
+
+    [self.resourceLoader invalidateSession];
+    self.resourceLoader = nil;
+
+    NSURLComponents *components =
+        [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    components.scheme = @"streaming";
+    NSURL *customURL = components.URL;
+
+    AVURLAsset *asset =
+        [AVURLAsset URLAssetWithURL:customURL options:nil];
+
+    self.resourceLoader = [[NLResourceLoader alloc] init];
+    self.resourceLoader.originURL = url;
+
+    [asset.resourceLoader setDelegate:self.resourceLoader
+                                queue:dispatch_get_main_queue()];
+
+    AVPlayerItem *item = [AVPlayerItem playerItemWithAsset:asset];
     [self uninstallCurrentItemObserver];
-    
+
     if (!self.player) {
         self.player = [[AVPlayer alloc] initWithPlayerItem:item];
-        [self addPeriodicTimeObserver];
     } else {
         [self.player replaceCurrentItemWithPlayerItem:item];
-        if (!self.timeObserver) {
-            [self addPeriodicTimeObserver];
-        }
     }
-    
+    [self addPeriodicTimeObserver];
+
     [self observeCurrentItemForReady:item];
     [self observeCurrentItemForEnd:item];
+
     self.player.volume = self.volume;
+
     [self setPlaybackState:NLPlaybackStatePlaying];
+
+    [self setupAudioSession]; // 切歌/首次播放前再次确保会话激活，缓解首曲 -50 导致不播
     [self.player play];
-    
-    // 先更新一次（标题、艺人、占位图等），时长和封面在 item ready / 图加载完后再更新
-    [self updateNowPlayingInfo];
+
+    [self preloadNextItemIfNeeded];
 }
 
+- (void)preloadNextItemIfNeeded {
+    [self clearPreloadedItem];
+    NSInteger nextIdx = [self indexForNextInMode:self.playMode];
+    if (nextIdx < 0 || nextIdx >= (NSInteger)self.playlist.count) return;
+    NLSong *nextSong = self.playlist[nextIdx];
+    if (!nextSong.playURL) return;
+
+    NSURL *url = nextSong.playURL;
+    NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    components.scheme = @"streaming";
+    NSURL *customURL = components.URL;
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:customURL options:nil];
+    NLResourceLoader *loader = [[NLResourceLoader alloc] init];
+    loader.originURL = url;
+    [asset.resourceLoader setDelegate:loader queue:dispatch_get_main_queue()];
+    AVPlayerItem *item = [AVPlayerItem playerItemWithAsset:asset];
+
+    self.nextResourceLoader = loader;
+    self.nextPlayerItem = item;
+    self.preloadedNextIndex = nextIdx;
+}
 
 - (void)play {
     if (!self.player) return;
@@ -169,6 +249,8 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
         [self.player removeTimeObserver:self.timeObserver];
         self.timeObserver = nil;
     }
+    [self clearPreloadedItem];
+    self.resourceLoader = nil;
     self.player = nil;
     self.currentSong = nil;
     self.playlist = nil;
@@ -238,6 +320,11 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 - (void)playSongAtIndexIfNeeded:(NSInteger)index {
     if (index < 0 || index >= (NSInteger)self.playlist.count) return;
     NLSong *song = self.playlist[index];
+    if (index == self.preloadedNextIndex && self.nextPlayerItem && song.playURL) {
+        [self switchToPreloadedItemAndPlay:index];
+        return;
+    }
+    [self clearPreloadedItem];
     if (song.playURL) {
         [self playSongAtIndex:index];
     } else {
@@ -256,6 +343,39 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
             });
         }];
     }
+}
+
+- (void)clearPreloadedItem {
+    self.nextResourceLoader = nil;
+    self.nextPlayerItem = nil;
+    self.preloadedNextIndex = -1;
+}
+
+- (void)switchToPreloadedItemAndPlay:(NSInteger)index {
+    if (!self.nextPlayerItem || index != self.preloadedNextIndex) return;
+    NLSong *song = self.playlist[index];
+    self.currentIndex = index;
+    self.currentSong = song;
+    [NLSongRepository addPlayHistory:song];
+    [self postSongChangedNotification];
+
+    [self.resourceLoader invalidateSession];
+    self.resourceLoader = self.nextResourceLoader;
+    self.nextResourceLoader = nil;
+    AVPlayerItem *item = self.nextPlayerItem;
+    self.nextPlayerItem = nil;
+    self.preloadedNextIndex = -1;
+
+    [self uninstallCurrentItemObserver];
+    [self.player replaceCurrentItemWithPlayerItem:item];
+    [self observeCurrentItemForReady:item];
+    [self observeCurrentItemForEnd:item];
+    self.player.volume = self.volume;
+    [self setPlaybackState:NLPlaybackStatePlaying];
+    [self setupAudioSession];
+    [self.player play];
+
+    [self preloadNextItemIfNeeded];
 }
 
 - (void)playSongAtIndex:(NSInteger)index {
@@ -357,6 +477,15 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
         if (!strongSelf) return;
         float progress = [strongSelf currentProgress];
         [strongSelf.progressSubject sendNext:@(progress)];
+        NSURL *url = strongSelf.currentSong.playURL;
+        float cacheProgress = url ? [[NLCacheManager sharedManager] cacheProgressForURL:url] : 0.f;
+        [strongSelf.cacheProgressSubject sendNext:@(cacheProgress)];
+        NSString *urlStr = url.absoluteString ?: @"";
+        if (![urlStr isEqualToString:strongSelf.lastLoggedCacheURL] || fabsf(cacheProgress - strongSelf.lastLoggedCacheProgress) >= 0.001f) {
+            strongSelf.lastLoggedCacheURL = urlStr;
+            strongSelf.lastLoggedCacheProgress = cacheProgress;
+            NSLog(@"[缓存] 歌名：%@ 缓存：%.1f%%", strongSelf.currentSong.title ?: @"(未知)", cacheProgress * 100.f);
+        }
     }];
 }
 
@@ -467,13 +596,16 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
     AVAudioSession *session = [AVAudioSession sharedInstance];
     NSError *error = nil;
 
+    // 先 deactivate 再设置，避免 -50 paramErr（例如上一应用未释放会话）
+    [session setActive:NO withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation error:NULL];
+
     [session setCategory:AVAudioSessionCategoryPlayback
                    mode:AVAudioSessionModeDefault
                 options:AVAudioSessionCategoryOptionAllowAirPlay
                   error:&error];
-
     if (error) {
         NSLog(@"[Player] AudioSession Category Error: %@", error);
+        error = nil;
     }
 
     [session setActive:YES error:&error];
@@ -488,7 +620,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
 
     __weak typeof(self) weakSelf = self;
 
-    // ▶️ Play
+    // Play
     [commandCenter.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *event) {
         [weakSelf play];
         return MPRemoteCommandHandlerStatusSuccess;
@@ -500,7 +632,7 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
         return MPRemoteCommandHandlerStatusSuccess;
     }];
 
-    // ⏩ Seek
+    //Seek
     [commandCenter.changePlaybackPositionCommand
      addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent *event) {
 
@@ -568,7 +700,6 @@ static void *kPlayerCurrentItemStatusContext = &kPlayerCurrentItemStatusContext;
         }];
         info[MPMediaItemPropertyArtwork] = artwork;
     }
-
     // 进度与时长（等 AVPlayerItem 就绪后才有有效 duration，由 KVO 触发再次更新）
     if (self.player.currentItem) {
         CMTime duration = self.player.currentItem.duration;

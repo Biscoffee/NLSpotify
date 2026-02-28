@@ -8,6 +8,8 @@
 #import "SceneDelegate.h"
 #import "NLTabBarController.h"
 #import "NLLoginViewController.h"
+#import "NLAuthManager.h"
+#import "NLCacheManager.h"
 
 @interface SceneDelegate ()
 
@@ -18,44 +20,32 @@
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
     UIWindowScene *windowScene = (UIWindowScene *)scene;
     self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
-
-    // 检查登录状态
-    BOOL isLoggedIn = [[NSUserDefaults standardUserDefaults] boolForKey:@"isLoggedIn"];
-
-    if (isLoggedIn) {
-        // 已登录，直接进入主页面
-        NLTabBarController *tabBar = [[NLTabBarController alloc] init];
-        self.window.rootViewController = tabBar;
-    } else {
-        // 未登录，显示登录页面
-        NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
-        UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:loginVC];
-        navController.navigationBarHidden = YES;
-        self.window.rootViewController = navController;
-    }
-
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleForceLogout) name:NLForceLogoutNotification object:nil];
+    [self showRootViewController];
     [self.window makeKeyAndVisible];
 }
 
-// 添加退出登录的方法
-- (void)logout {
-    // 清除登录状态
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"isLoggedIn"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    // 切换到登录页面
-    NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
-    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:loginVC];
-    navController.navigationBarHidden = YES;
+- (void)showRootViewController {
+    if ([NLAuthManager isLoggedIn]) {
+        self.window.rootViewController = [[NLTabBarController alloc] init];
+    } else {
+        NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:loginVC];
+        nav.navigationBarHidden = YES;
+        self.window.rootViewController = nav;
+    }
+}
 
-    // 动画切换
+- (void)handleForceLogout {
+    NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:loginVC];
+    nav.navigationBarHidden = YES;
     CATransition *transition = [CATransition animation];
     transition.duration = 0.5;
     transition.type = kCATransitionFade;
-
     [self.window.layer addAnimation:transition forKey:kCATransition];
-    self.window.rootViewController = navController;
+    self.window.rootViewController = nav;
 }
-
 
 - (void)sceneDidDisconnect:(UIScene *)scene {
   // Called as the scene is being released by the system.
@@ -84,9 +74,7 @@
 
 
 - (void)sceneDidEnterBackground:(UIScene *)scene {
-  // Called as the scene transitions from the foreground to the background.
-  // Use this method to save data, release shared resources, and store enough scene-specific state information
-  // to restore the scene back to its current state.
+  [[NLCacheManager sharedManager] cleanCacheWithMaxSize:500 * 1024 * 1024];
 }
 
 

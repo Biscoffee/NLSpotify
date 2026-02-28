@@ -22,6 +22,8 @@
 @property (nonatomic, strong) UIButton *playPauseButton;
 @property (nonatomic, strong) UIButton *previousButton;
 @property (nonatomic, strong) UIButton *nextButton;
+@property (nonatomic, strong) UIView *progressContainerView;
+@property (nonatomic, strong) UIProgressView *cacheProgressView;
 @property (nonatomic, strong) UISlider *progressSlider;
 @property (nonatomic, strong) UISlider *volumeSlider;
 @property (nonatomic, strong) UIImageView *volumeLeftIcon;
@@ -124,6 +126,17 @@
     [self.moreButton addTarget:self action:@selector(moreTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.moreButton];
 
+    // 进度条容器：仅一层缓存条（灰度在未播/已播之间）+ 顶层 UISlider（恢复为之前样式）
+    self.progressContainerView = [[UIView alloc] init];
+    self.progressContainerView.clipsToBounds = YES;
+    [self addSubview:self.progressContainerView];
+
+    self.cacheProgressView = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
+    self.cacheProgressView.progress = 0.f;
+    self.cacheProgressView.progressTintColor = [UIColor colorWithWhite:0.55 alpha:1]; // 缓存条：灰度在未播与已播之间
+    self.cacheProgressView.trackTintColor = [UIColor tertiarySystemFillColor];        // 未缓存部分与原先未播一致
+    [self.progressContainerView addSubview:self.cacheProgressView];
+
     // 时间标签和进度条
     self.currentTimeLabel = [[UILabel alloc] init];
     self.currentTimeLabel.textColor = [UIColor secondaryLabelColor];
@@ -139,16 +152,15 @@
     self.totalTimeLabel.text = @"0:00";
     [self addSubview:self.totalTimeLabel];
 
-    // 进度条
+    // UISlider 恢复为之前样式：已播 = labelColor，未播 = 透明以露出下层缓存条
     self.progressSlider = [[NLExpandableTouchSlider alloc] init];
-    [self.progressSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
     self.progressSlider.minimumTrackTintColor = [UIColor labelColor];
-    self.progressSlider.maximumTrackTintColor = [UIColor tertiarySystemFillColor];
-    // 添加三个事件，分别适用于：通过进度条拉动调整进度、触碰到进度条时加粗/离开时恢复
+    self.progressSlider.maximumTrackTintColor = [UIColor clearColor];
+    [self.progressSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
     [self.progressSlider addTarget:self action:@selector(progressChanged:) forControlEvents:UIControlEventValueChanged];
     [self.progressSlider addTarget:self action:@selector(progressTouchDown:) forControlEvents:UIControlEventTouchDown];
     [self.progressSlider addTarget:self action:@selector(progressTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
-    [self addSubview:self.progressSlider];
+    [self.progressContainerView addSubview:self.progressSlider];
 
     UIView *timeSpacer = [[UIView alloc] init];
     self.timeLabelsStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.currentTimeLabel, timeSpacer, self.totalTimeLabel]];
@@ -223,7 +235,7 @@
 
     self.queueModeStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.queueShuffleButton, self.queueListLoopButton, self.queueSingleLoopButton]];
     self.queueModeStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.queueModeStackView.distribution = UIStackViewDistributionFill;
+    self.queueModeStackView.distribution = UIStackViewDistributionFillEqually;
     self.queueModeStackView.spacing = 16;
     self.queueModeStackView.alignment = UIStackViewAlignmentCenter;
 
@@ -318,26 +330,32 @@
         make.height.mas_equalTo(35);
     }];
     [self.queueShuffleButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.size.mas_equalTo(CGSizeMake(95, 35));
+        make.height.mas_equalTo(35);
     }];
     [self.queueListLoopButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.size.mas_equalTo(CGSizeMake(95, 35));
+        make.height.mas_equalTo(35);
     }];
     [self.queueSingleLoopButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.size.mas_equalTo(CGSizeMake(95, 35));
+        make.height.mas_equalTo(35);
     }];
-    [self.queueShuffleButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.queueListLoopButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.queueSingleLoopButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.queueTableView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(312);
     }];
+    // 初始为折叠状态，隐藏队列内容避免 height==0 与 stack 内 35+8+312 冲突
+    self.queueModeStackView.hidden = YES;
+    self.queueTableView.hidden = YES;
 
-    [self.progressSlider mas_makeConstraints:^(MASConstraintMaker *make) {
+    [self.progressContainerView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.left.equalTo(self).offset(30);
         make.right.equalTo(self).offset(-30);
         make.height.mas_equalTo(6);
         make.bottom.equalTo(self.timeLabelsStackView.mas_top).offset(-11);
+    }];
+    [self.cacheProgressView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.progressContainerView);
+    }];
+    [self.progressSlider mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.progressContainerView);
     }];
 
     [self.currentTimeLabel mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -429,6 +447,10 @@
     if (!self.progressSlider.isTracking) {
         self.progressSlider.value = progress;
     }
+}
+
+- (void)updateCacheProgress:(float)progress {
+    [self.cacheProgressView setProgress:progress animated:YES];
 }
 
 - (void)updateCurrentTime:(NSTimeInterval)currentTime totalTime:(NSTimeInterval)totalTime {
@@ -531,7 +553,9 @@
 }
 
 - (void)moreTapped {
-    // 显示更多选项
+    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapMore:)]) {
+        [self.delegate musicPlayerViewDidTapMore:self];
+    }
 }
 
 - (void)playPauseTapped {
@@ -630,6 +654,8 @@
         [self.queueTableView mas_updateConstraints:^(MASConstraintMaker *make) {
             make.height.mas_equalTo(312);
         }];
+        self.queueModeStackView.hidden = NO;
+        self.queueTableView.hidden = NO;
     } else {
         [self.dismissIndicator mas_remakeConstraints:^(MASConstraintMaker *make) {
             make.bottom.equalTo(self.coverImageView.mas_top).offset(-42);
@@ -671,6 +697,8 @@
         [self.queueTableView mas_updateConstraints:^(MASConstraintMaker *make) {
             make.height.mas_equalTo(160);
         }];
+        self.queueModeStackView.hidden = YES;
+        self.queueTableView.hidden = YES;
     }
     [self setNeedsLayout];
 }
@@ -758,8 +786,8 @@
 
 - (void)progressTouchDown:(UISlider *)slider {
     self.isTrackingProgress = YES;
-    [self.progressSlider mas_updateConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(10); // 从2pt加粗到4pt
+    [self.progressContainerView mas_updateConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(10);
     }];
     [UIView animateWithDuration:0.2
                           delay:0
@@ -773,10 +801,8 @@
 
 - (void)progressTouchUp:(UISlider *)slider {
     self.isTrackingProgress = NO;
-
-    // 恢复细线
-    [self.progressSlider mas_updateConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(2); // 恢复为2pt
+    [self.progressContainerView mas_updateConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(6);
     }];
     [UIView animateWithDuration:0.2
                           delay:0

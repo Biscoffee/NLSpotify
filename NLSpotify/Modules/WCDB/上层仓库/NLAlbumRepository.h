@@ -2,8 +2,9 @@
 //  NLAlbumRepository.h
 //  NLSpotify
 //
-//  收藏专辑的本地持久化（WCDB）
+//  Created by 吴桐 on 2026/2/23.
 //
+
 
 #import <Foundation/Foundation.h>
 

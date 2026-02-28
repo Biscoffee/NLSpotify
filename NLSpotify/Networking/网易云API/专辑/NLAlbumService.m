@@ -39,7 +39,7 @@
             header.creatorName = artistDict[@"name"];
             header.creatorAvatar = artistDict[@"img1v1Url"];
         }
-      NSLog(@"artistdict: %@",artistDict);
+      // NSLog(@"artistdict: %@",artistDict); // 专注播放器时先注释
 
         // =========================
         // 2️⃣ Songs（歌曲列表）
@@ -70,7 +70,7 @@
             [songs addObject:song];
         }
 
-      NSLog(@"songs: %@",songs);
+      // NSLog(@"songs: %@",songs); // 专注播放器时先注释
           if (completion) {
             completion(header, songs);
         }

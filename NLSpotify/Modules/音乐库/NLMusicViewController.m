@@ -24,12 +24,14 @@
     self.navigationItem.title = @"音乐库";
 
     self.menuItems = @[
-        @{@"title": @"播放历史",       @"icon": @"clock.arrow.circlepath"},
-        @{@"title": @"收藏的歌单",     @"icon": @"star.circle"},
-        @{@"title": @"创建的歌单",     @"icon": @"music.note.list"},
-        @{@"title": @"艺人",           @"icon": @"mic"},
-        @{@"title": @"我收藏的专辑",   @"icon": @"square.stack"},
-        @{@"title": @"歌曲",           @"icon": @"music.note"}
+        @{@"title": @"播放历史",         @"icon": @"clock.arrow.circlepath"},
+        @{@"title": @"收藏的歌单",       @"icon": @"star.circle"},
+        @{@"title": @"创建的歌单",       @"icon": @"music.note.list"},
+        @{@"title": @"缓存",             @"icon": @"arrow.down.circle"},
+        @{@"title": @"我下载的音乐",     @"icon": @"arrow.down.circle.fill"},
+        @{@"title": @"艺人",             @"icon": @"mic"},
+        @{@"title": @"我收藏的专辑",     @"icon": @"square.stack"},
+        @{@"title": @"歌曲",             @"icon": @"music.note"}
     ];
     
     [self.view addSubview:self.tableView];
@@ -76,9 +78,11 @@
         case 0: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeRecentPlay]; break;
         case 1: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeLikedPlaylists]; break;
         case 2: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeMyPlaylists]; break;
-        case 4: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeLikedAlbums]; break;
-        case 5: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeLikedSongs]; break;
-        default: break;
+        case 3: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeCachedSongs]; break;
+        case 4: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeDownloadedSongs]; break;
+        case 6: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeLikedAlbums]; break;
+        case 7: vc = [[NLMusicLibraryListViewController alloc] initWithMode:NLMusicLibraryListModeLikedSongs]; break;
+        default: break; // 5 = 艺人，暂无列表页
     }
     if (vc) {
         [self.navigationController pushViewController:vc animated:YES];

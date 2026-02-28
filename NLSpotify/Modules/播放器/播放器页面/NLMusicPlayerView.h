@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)musicPlayerViewDidTapPlaylist:(NLMusicPlayerView *)view;
 - (void)musicPlayerViewDidTapFavorite:(NLMusicPlayerView *)view;
 - (void)musicPlayerViewDidTapAddToPlaylist:(NLMusicPlayerView *)view;
+- (void)musicPlayerViewDidTapMore:(NLMusicPlayerView *)view;
 
 // 播放队列数据
 - (NSArray<NLSong *> *)musicPlayerViewPlaylist:(NLMusicPlayerView *)view;
@@ -50,6 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateTitle:(NSString *)title artist:(NSString *)artist;
 - (void)updateCoverURL:(NSURL *)url;
 - (void)updateProgress:(float)progress;
+- (void)updateCacheProgress:(float)cacheProgress;
 - (void)updateCurrentTime:(NSTimeInterval)currentTime totalTime:(NSTimeInterval)totalTime;
 - (void)updateVolume:(float)volume;
 - (void)updatePlayState:(BOOL)isPlaying;

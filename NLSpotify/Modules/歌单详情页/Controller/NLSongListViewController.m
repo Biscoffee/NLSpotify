@@ -12,6 +12,7 @@
 #import "NLAlbumService.h"
 #import "NLSongListService.h"
 #import "NLPlayerManager.h"
+#import "NLDownloadManager.h"
 #import "NLSong.h"
 #import "NLSongService.h"
 #import "NLCommentListViewController.h"
@@ -137,9 +138,10 @@
         // 本地歌单：暂时不提供收藏/评论入口，只复用 UI 布局
         self.navigationItem.rightBarButtonItems = @[];
     } else {
-        // 歌单|| 专辑 ：右上角改为收藏星标
+        UIBarButtonItem *batchDownloadItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.down.circle"] style:UIBarButtonItemStylePlain target:self action:@selector(batchDownloadTapped)];
+        batchDownloadItem.accessibilityLabel = @"批量下载";
         self.favoriteItem = [[UIBarButtonItem alloc] initWithImage:nil style:UIBarButtonItemStylePlain target:self action:@selector(favoriteTapped)];
-        self.navigationItem.rightBarButtonItems = @[ commentItem, self.favoriteItem ];
+        self.navigationItem.rightBarButtonItems = @[ commentItem, batchDownloadItem, self.favoriteItem ];
         [self refreshFavoriteButton];
     }
 }
@@ -201,6 +203,63 @@
               resourceType:type 
                      title:[NSString stringWithFormat:@"%@ 评论", self.title ?: @"评论"]];
     [self.navigationController pushViewController:vc animated:YES];
+}
+
+#pragma mark - 批量下载
+
+- (void)batchDownloadTapped {
+    if (self.songs.count == 0) {
+        [self showToast:@"当前没有歌曲"];
+        return;
+    }
+    NSInteger count = self.songs.count;
+    NSString *message = [NSString stringWithFormat:@"将本%@全部 %ld 首加入下载队列？已下载或已在队列中的会跳过。", self.type == NLSongListTypePlaylist ? @"歌单" : @"专辑", (long)count];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"批量下载" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"下载全部" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf performBatchDownload];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)performBatchDownload {
+    NSMutableArray<NLSong *> *songList = [self buildSongListShuffled:NO];
+    if (songList.count == 0) {
+        [self showToast:@"没有可下载的歌曲"];
+        return;
+    }
+    NLDownloadManager *mgr = [NLDownloadManager sharedManager];
+    for (NLSong *song in songList) {
+        [mgr addDownloadForSong:song];
+    }
+    [self showToast:[NSString stringWithFormat:@"已将 %lu 首加入下载队列", (unsigned long)songList.count]];
+}
+
+- (void)showToast:(NSString *)text {
+    UIView *toast = [[UIView alloc] init];
+    toast.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.75];
+    toast.layer.cornerRadius = 10;
+    toast.alpha = 0;
+    UILabel *label = [[UILabel alloc] init];
+    label.text = text;
+    label.font = [UIFont systemFontOfSize:15];
+    label.textColor = [UIColor whiteColor];
+    label.numberOfLines = 0;
+    [toast addSubview:label];
+    [label mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(toast).insets(UIEdgeInsetsMake(12, 20, 12, 20));
+    }];
+    [self.view addSubview:toast];
+    [toast mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.center.equalTo(self.view);
+    }];
+    [UIView animateWithDuration:0.2 animations:^{ toast.alpha = 1; }];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.25 animations:^{ toast.alpha = 0; } completion:^(BOOL finished) {
+            [toast removeFromSuperview];
+        }];
+    });
 }
 
 #pragma mark - Layout

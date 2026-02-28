@@ -49,8 +49,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 // 播放进度
 @property (nonatomic, strong, readonly) RACSignal<NSNumber *> *progressSignal;
-
-
+// 缓存进度 0.0~1.0
+@property (nonatomic, strong, readonly) RACSignal<NSNumber *> *cacheProgressSignal;
 
 //- (void)playWithSong:(NLSong *)song;
 - (void)playWithPlaylist:(NSArray<NLSong *> *)playlist startIndex:(NSInteger)index;
