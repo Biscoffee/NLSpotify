@@ -2,18 +2,15 @@
 //  NLExpandableTouchSlider.h
 //  NLSpotify
 //
-//  Created by 吴桐 on 2025/12/19.
+//  Created by 吴桐 on 2026/3/3.
 //
 
 #import <UIKit/UIKit.h>
 
-NS_ASSUME_NONNULL_BEGIN
-
-/*
- 自定义 UISlider，扩大触摸区域但保持视觉上的细线效果
- */
+/// 支持自定义触摸热区扩展的 Slider
 @interface NLExpandableTouchSlider : UISlider
 
-@end
+/// 向外扩展的点击区域大小（默认 15pt）
+@property (nonatomic, assign) CGFloat touchAreaExpansion;
 
-NS_ASSUME_NONNULL_END
+@end

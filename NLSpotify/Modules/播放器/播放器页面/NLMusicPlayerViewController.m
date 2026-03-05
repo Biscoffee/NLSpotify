@@ -14,16 +14,28 @@
 #import "NLAddToPlaylistSheetViewController.h"
 #import "NLCommentListViewController.h"
 #import "NLDownloadManager.h"
+#import "NLSongService.h"
+#import "NLLyricLine.h"
 #import <Masonry/Masonry.h>
+#import <MediaPlayer/MediaPlayer.h>
+#import <AVFoundation/AVFoundation.h>
 
-@interface NLMusicPlayerViewController () <NLMusicPlayerViewDelegate, UIGestureRecognizerDelegate>
+
+@interface NLMusicPlayerViewController () <NLMusicPlayerViewDelegate, UIGestureRecognizerDelegate, UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UIView *backgroundOverlay;
 @property (nonatomic, strong) NLMusicPlayerView *playerView;
+@property (nonatomic, strong) MPVolumeView *systemVolumeView;
+@property (nonatomic, copy) NSString *lastFullyCachedToastKey;
+
+// 歌词
+@property (nonatomic, strong) UITableView *lyricTableView;
+@property (nonatomic, strong) NSArray<NLLyricLine *> *lyricLines;
+@property (nonatomic, assign) NSInteger currentLyricIndex;
+@property (nonatomic, assign) BOOL lyricVisible;
+@property (nonatomic, copy) NSString *currentLyricSongId;
 @end
 
 @implementation NLMusicPlayerViewController
-
-#pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -31,14 +43,26 @@
 
     [self.view addSubview:self.backgroundOverlay];
     [self.view addSubview:self.playerView];
+    [self.playerView addSubview:self.lyricTableView];
     [self setupConstraints];
 
     [self bindPlayer];
     [self refreshUI];
 
+    // 隐藏的系统音量视图，用于驱动系统音量（硬件按键 / 控制中心）与自定义音量条同步
+    self.systemVolumeView = [[MPVolumeView alloc] initWithFrame:CGRectZero];
+    self.systemVolumeView.hidden = YES;
+    [self.view addSubview:self.systemVolumeView];
+
+    // 监听系统音量变化，将其同步到自定义音量条
+    [[AVAudioSession sharedInstance] addObserver:self
+                                      forKeyPath:@"outputVolume"
+                                         options:NSKeyValueObservingOptionNew
+                                         context:NULL];
+
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
     pan.delegate = self;
-    pan.minimumNumberOfTouches = 1;
+    pan.minimumNumberOfTouches = 0;
     pan.maximumNumberOfTouches = 1;
     [self.view addGestureRecognizer:pan];
 }
@@ -50,18 +74,15 @@
     [self.playerView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.edges.equalTo(self.view);
     }];
+    [self.lyricTableView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(self.playerView.queueContainerView);
+    }];
 }
 
 #pragma mark - Player Binding
 
 - (void)bindPlayer {
-//    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
-//    [center addObserver:self selector:@selector(refreshUI)
-//                   name:NLPlayerSongDidChangeNotification object:nil];
-//    [center addObserver:self selector:@selector(refreshPlayState)
-//                   name:NLPlayerPlaybackStateDidChangeNotification object:nil];
-//    [center addObserver:self selector:@selector(playerProgressDidChange:)
-//                   name:NLPlayerProgressDidChangeNotification object:nil];
+    NSLog(@"[PlayTrace] [PlayerVC] bindPlayer");
         NLPlayerManager *manager = NLPlayerManager.sharedManager;
         @weakify(self);
     // 等价于__weak typeof(self) weakSelf = self;
@@ -69,48 +90,104 @@
         [manager.songSignal subscribeNext:^(NLSong *song) {
             @strongify(self);
             if (!song) return;
+            NSLog(@"[PlayTrace] [PlayerVC] songSignal 收到歌曲: %@ (%@)", song.title, song.songId);
+            [self.playerView refreshProgress];
             [self.playerView updateTitle:song.title artist:song.artist];
             [self.playerView updateCoverURL:song.coverURL];
-            [self.playerView updateProgress:0];
-            [self.playerView updateCacheProgress:0];
             [self.playerView updateCurrentTime:0 totalTime:manager.totalTime];
             [self.playerView updateFavoriteState:[NLSongRepository isSongLiked:song.songId]];
             if (self.playerView.isQueuePanelVisible) {
                 [self.playerView reloadQueue];
             }
-        }];
+            if (song.playURL) {
+                float cacheProgress = [[NLCacheManager sharedManager] cacheProgressForURL:song.playURL];
+                NSLog(@"[缓存条] 歌曲切换，设置缓存条 progress=%.2f", cacheProgress);
+                [self.playerView updateCacheProgress:cacheProgress];
+            } else {
+                [self.playerView updateCacheProgress:0];
+            }
 
-    //  播放状态变化
+            // 歌切换时，同步处理歌词：
+            // 1）清空旧歌词；2）记录当前歌曲 ID；3）若当前在歌词模式，则自动加载新歌歌词
+            self.currentLyricSongId = song.songId.length ? song.songId : nil;
+            self.lyricLines = nil;
+            self.currentLyricIndex = -1;
+            [self.lyricTableView reloadData];
+            if (self.lyricVisible && song.songId.length) {
+                NSString *targetSongId = song.songId;
+                [[NLSongService sharedService] fetchLyricWithSongId:targetSongId success:^(NSString *lyric) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        // 防止快速切歌时旧歌词覆盖新歌
+                        if (![self.currentLyricSongId isEqualToString:targetSongId]) return;
+                        [self buildLyricLinesFromRawText:lyric];
+                        [self updateLyricForCurrentTime:NLPlayerManager.sharedManager.currentTime];
+                    });
+                } failure:^(NSError *error) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (![self.currentLyricSongId isEqualToString:targetSongId]) return;
+                        [self showToast:@"歌词加载失败"];
+                    });
+                }];
+            }
+        }];
+    // 播放状态变化
         [manager.playbackStateSignal subscribeNext:^(NSNumber *stateNum) {
             @strongify(self);
-            BOOL playing = stateNum.integerValue == NLPlaybackStatePlaying;
-            [self.playerView updatePlayState:playing];
+            dispatch_async(dispatch_get_main_queue(), ^{ // ✨ 加这层
+                NSLog(@"[PlayTrace] [PlayerVC] playbackStateSignal state=%@", stateNum);
+                BOOL playing = stateNum.integerValue == NLPlaybackStatePlaying;
+                [self.playerView updatePlayState:playing];
+                if (playing) {
+                    [self maybeShowFullyCachedToastIfNeeded];
+                }
+            });
         }];
 
-    // 播放进度
+        // 进度变化
         [manager.progressSignal subscribeNext:^(NSNumber *progressNum) {
             @strongify(self);
-            if (self.playerView.isTrackingProgress) return;
-
-            float progress = progressNum.floatValue;
-            [self.playerView updateProgress:progress];
-            [self.playerView updateCurrentTime:manager.currentTime
-                                     totalTime:manager.totalTime];
+            dispatch_async(dispatch_get_main_queue(), ^{ // 加这层
+                NSLog(@"[PlayTrace] [PlayerVC] progressSignal progress=%.3f", progressNum.floatValue);
+                if (self.playerView.isTrackingProgress) return;
+                float progress = progressNum.floatValue;
+                [self.playerView updateProgress:progress];
+                [self.playerView updateCurrentTime:manager.currentTime
+                                         totalTime:manager.totalTime];
+                [self updateLyricForCurrentTime:manager.currentTime];
+            });
         }];
-
-    // 缓存进度
+    // 缓存进度（ResourceLoader 在 NSURLSession 回调线程 sendNext，必须回主线程更新 UI）
         [manager.cacheProgressSignal subscribeNext:^(NSNumber *progressNum) {
             @strongify(self);
-            if ([progressNum isKindOfClass:[NSNumber class]]) {
-                [self.playerView updateCacheProgress:progressNum.floatValue];
-            }
+            if (![progressNum isKindOfClass:[NSNumber class]]) return;
+            float value = progressNum.floatValue;
+            NSLog(@"[PlayTrace] [PlayerVC] cacheProgressSignal progress=%.3f", value);
+            if ([NSThread isMainThread]) {
+               [self.playerView updateCacheProgress:value];
+           } else {
+               dispatch_async(dispatch_get_main_queue(), ^{
+                   [self.playerView updateCacheProgress:value];
+               });
+           }
         }];
 }
 
+- (void)maybeShowFullyCachedToastIfNeeded {
+    NLSong *song = NLPlayerManager.sharedManager.currentSong;
+    if (!song || !song.playURL) return;
+    NSString *key = song.songId.length > 0 ? song.songId : (song.playURL.absoluteString ?: @"");
+    if (key.length == 0) return;
+    if ([self.lastFullyCachedToastKey isEqualToString:key]) return;
+    if (![[NLCacheManager sharedManager] isFullyCachedForURL:song.playURL]) return;
+    self.lastFullyCachedToastKey = key;
+    [self showToast:@"该歌曲已完整缓存"];
+}
 
 - (void)refreshUI {
+    NSLog(@"[PlayTrace] [PlayerVC] refreshUI");
     NLSong *song = NLPlayerManager.sharedManager.currentSong;
     if (!song) {
+        NSLog(@"[PlayTrace] [PlayerVC] refreshUI: 当前没有歌曲");
         [self.playerView updateTitle:@"未在播放" artist:@""];
         [self.playerView updateCoverURL:nil];
     [self.playerView updateProgress:0];
@@ -119,13 +196,21 @@
     [self.playerView updateFavoriteState:NO];
         return;
     }
+    NSLog(@"[PlayTrace] [PlayerVC] refreshUI: 当前歌曲 %@ (%@)", song.title, song.songId);
     [self.playerView updateTitle:song.title artist:song.artist];
     [self.playerView updateCoverURL:song.coverURL];
+
     float progress = NLPlayerManager.sharedManager.currentProgress;
+    NSLog(@"[PlayTrace] [PlayerVC] refreshUI: 设置播放进度=%.3f", progress);
     [self.playerView updateProgress:progress];
-    NSURL *url = song.playURL;
-    float cacheProgress = url ? [[NLCacheManager sharedManager] cacheProgressForURL:url] : 0.f;
-    NSLog(@"[缓存条] refreshUI 设置缓存条 progress=%.2f url=%@", cacheProgress, url.absoluteString ?: @"");
+
+//    NSURL *url = song.playURL;
+//    float cacheProgress = url ? [[NLCacheManager sharedManager] cacheProgressForURL:url] : 0.f;
+//    NSLog(@"[缓存条] refreshUI 设置缓存条 progress=%.2f url=%@", cacheProgress, url.absoluteString ?: @"");
+//    [self.playerView updateCacheProgress:cacheProgress];
+    float cacheProgress = NLPlayerManager.sharedManager.latestCacheProgress;
+    NSLog(@"[缓存条] refreshUI 设置缓存条 progress=%.2f", cacheProgress);
+    NSLog(@"[PlayTrace] [PlayerVC] refreshUI: 设置缓存进度=%.3f", cacheProgress);
     [self.playerView updateCacheProgress:cacheProgress];
 
     NSTimeInterval currentTime = NLPlayerManager.sharedManager.currentTime;
@@ -137,6 +222,8 @@
     [self.playerView updatePlayState:playing];
     [self.playerView updatePlayMode:NLPlayerManager.sharedManager.playMode];
     [self.playerView updateFavoriteState:[NLSongRepository isSongLiked:song.songId]];
+    // 刷新歌词选中行
+    [self updateLyricForCurrentTime:NLPlayerManager.sharedManager.currentTime];
 }
 
 
@@ -147,23 +234,55 @@
 }
 
 - (void)musicPlayerViewDidTapPlayPause:(NLMusicPlayerView *)view {
+    NSLog(@"[PlayTrace] [PlayerVC] UI 点击播放/暂停");
     [NLPlayerManager.sharedManager togglePlayPause];
 }
 
 - (void)musicPlayerViewDidTapPrevious:(NLMusicPlayerView *)view {
+    NSLog(@"[PlayTrace] [PlayerVC] UI 点击上一首");
     [NLPlayerManager.sharedManager playPrevious];
 }
 
 - (void)musicPlayerViewDidTapNext:(NLMusicPlayerView *)view {
+    NSLog(@"[PlayTrace] [PlayerVC] UI 点击下一首");
     [NLPlayerManager.sharedManager playNext];
 }
 
 - (void)musicPlayerView:(NLMusicPlayerView *)view didChangeProgress:(float)value {
+    NSLog(@"[PlayTrace] [PlayerVC] UI 拖动进度到 %.3f", value);
     [[NLPlayerManager sharedManager] seekToProgress:value];
 }
 
+- (void)musicPlayerViewDidTapCover:(NLMusicPlayerView *)view {
+    NLSong *song = NLPlayerManager.sharedManager.currentSong;
+    if (!song || !song.songId.length) return;
+    if (!self.lyricLines || self.lyricLines.count == 0) {
+        // 第一次加载歌词
+        [[NLSongService sharedService] fetchLyricWithSongId:song.songId success:^(NSString *lyric) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self buildLyricLinesFromRawText:lyric];
+                [self showLyricView:YES];
+            });
+        } failure:^(NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self showToast:@"歌词加载失败"];
+            });
+        }];
+    } else {
+        [self showLyricView:!self.lyricVisible];
+    }
+}
+
 - (void)musicPlayerView:(NLMusicPlayerView *)view didChangeVolume:(float)value {
-    [NLPlayerManager sharedManager].volume = value;
+    // 将自定义音量条的变化同步到系统音量
+    for (UIView *subview in self.systemVolumeView.subviews) {
+        if ([subview isKindOfClass:[UISlider class]]) {
+            UISlider *slider = (UISlider *)subview;
+            [slider setValue:value animated:NO];
+            [slider sendActionsForControlEvents:UIControlEventTouchUpInside];
+            break;
+        }
+    }
 }
 
 - (void)musicPlayerViewDidTapComment:(NLMusicPlayerView *)view {
@@ -178,7 +297,12 @@
 }
 
 - (void)musicPlayerViewDidTapPlaylist:(NLMusicPlayerView *)view {
-    [view setQueuePanelVisible:!view.isQueuePanelVisible animated:YES];
+    // 如果当前在歌词模式，先关闭歌词，避免歌词表和队列列表重叠
+    if (self.lyricVisible) {
+        [self showLyricView:NO];
+    }
+    BOOL wantShowQueue = !view.isQueuePanelVisible;
+    [view setQueuePanelVisible:wantShowQueue animated:YES];
 }
 
 - (NSArray<NLSong *> *)musicPlayerViewPlaylist:(NLMusicPlayerView *)view {
@@ -258,71 +382,52 @@
     });
 }
 
+#pragma mark - System Volume KVO
+
+- (void)dealloc {
+    @try {
+        [[AVAudioSession sharedInstance] removeObserver:self forKeyPath:@"outputVolume"];
+    } @catch (__unused NSException *e) {
+    }
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey,id> *)change
+                       context:(void *)context {
+    if ([keyPath isEqualToString:@"outputVolume"]) {
+        float v = [change[NSKeyValueChangeNewKey] floatValue];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.playerView updateVolume:v];
+        });
+        return;
+    }
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+}
+
 #pragma mark - UIGestureRecognizerDelegate
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
-    // 如果触摸点在 slider 或其父视图上，不响应 pan 手势
-    UIView *touchView = touch.view;
-    
-    // 检查触摸的视图是否是 slider 或其子视图
-    if ([touchView isKindOfClass:[UISlider class]]) {
-        return NO; // 直接触摸 slider，不响应 pan 手势
-    }
-    
-    // 检查触摸点是否在 slider 的区域内（扩大检查范围）
-    CGPoint touchPoint = [touch locationInView:self.playerView];
-    UIView *progressSlider = self.playerView.progressSlider;
-    UIView *volumeSlider = self.playerView.volumeSlider;
-    
-    // 将 slider 的 frame 转换到 playerView 的坐标系
-    CGRect progressFrame = [progressSlider.superview convertRect:progressSlider.frame toView:self.playerView];
-    CGRect volumeFrame = [volumeSlider.superview convertRect:volumeSlider.frame toView:self.playerView];
-    CGRect expandedProgressFrame = CGRectInset(progressFrame, -10, -30);
-    CGRect expandedVolumeFrame = CGRectInset(volumeFrame, -10, -30);
-    
-    if (CGRectContainsPoint(expandedProgressFrame, touchPoint) || CGRectContainsPoint(expandedVolumeFrame, touchPoint)) {
-        return NO; // 触摸点在 slider 区域内，不响应 pan 手势
-    }
-    return YES;
-}
-
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-    // 如果是 pan 手势，检查初始触摸点和滑动方向
-    if ([gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
-        UIPanGestureRecognizer *pan = (UIPanGestureRecognizer *)gestureRecognizer;
-        CGPoint location = [pan locationInView:self.playerView];
-        CGPoint translation = [pan translationInView:self.view];
-        
-        // 检查是否在 slider 区域内
-        UIView *progressSlider = self.playerView.progressSlider;
-        UIView *volumeSlider = self.playerView.volumeSlider;
-        
-        CGRect progressFrame = [progressSlider.superview convertRect:progressSlider.frame toView:self.playerView];
-        CGRect volumeFrame = [volumeSlider.superview convertRect:volumeSlider.frame toView:self.playerView];
-        
-        // 扩大检查范围
-        CGRect expandedProgressFrame = CGRectInset(progressFrame, -20, -40);
-        CGRect expandedVolumeFrame = CGRectInset(volumeFrame, -20, -40);
-        
-        if (CGRectContainsPoint(expandedProgressFrame, location) || CGRectContainsPoint(expandedVolumeFrame, location)) {
-            // 如果在 slider 区域，且是水平滑动，不开始 pan 手势
-            if (fabs(translation.x) > fabs(translation.y)) {
-                return NO; // 水平滑动，让 slider 处理
-            }
-            // 即使是垂直滑动，如果在 slider 区域，也不响应（避免误触）
-            return NO;
-        }
+    if (![gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
+        return YES;
     }
-    
-    return YES;
-}
-
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
-    // 如果另一个手势是 slider 的手势，不同时识别
-    if ([otherGestureRecognizer.view isKindOfClass:[UISlider class]]) {
+    UIPanGestureRecognizer *pan = (UIPanGestureRecognizer *)gestureRecognizer;
+    CGPoint location = [pan locationInView:self.playerView];
+    CGPoint velocity = [pan velocityInView:self.playerView];
+    if ([self isPointInSliderArea:location]) {
         return NO;
     }
+    if (fabs(velocity.y) > fabs(velocity.x) && velocity.y > 0) {
+        return YES;
+    }
     return NO;
+}
+
+- (BOOL)isPointInSliderArea:(CGPoint)point {
+    CGRect progressFrame = [self.playerView.progressSlider.superview convertRect:self.playerView.progressSlider.frame toView:self.playerView];
+    CGRect volumeFrame = [self.playerView.volumeSlider.superview convertRect:self.playerView.volumeSlider.frame toView:self.playerView];
+
+    return CGRectContainsPoint(progressFrame, point) || CGRectContainsPoint(volumeFrame, point);
 }
 
 - (void)handlePan:(UIPanGestureRecognizer *)pan {
@@ -337,11 +442,9 @@
         }
         return;
     }
-    
     // 计算下滑进度（使用更大的阈值，使交互更流畅）
     CGFloat dismissThreshold = 400.0;
     CGFloat progress = MIN(translation.y / dismissThreshold, 1.0);
-    
     if (pan.state == UIGestureRecognizerStateBegan) {
         // 开始下滑时，可以添加触觉反馈
         if (@available(iOS 10.0, *)) {
@@ -352,7 +455,6 @@
         // 更新视图位置和进度
         self.view.transform = CGAffineTransformMakeTranslation(0, translation.y);
         self.playerView.dismissProgress = progress;
-        
         // 在下拉过程中逐渐显示背景（让后面的页面可见）
         // 通过调整背景层的透明度，让后面的页面逐渐显示
         UIView *backgroundOverlay = self.backgroundOverlay;
@@ -413,10 +515,6 @@
     } completion:nil];
 }
 
-//- (void)dealloc {
-//    [NSNotificationCenter.defaultCenter removeObserver:self];
-//}
-
 #pragma mark - Getters
 
 - (UIView *)backgroundOverlay {
@@ -441,4 +539,156 @@
     return _playerView;
 }
 
+- (UITableView *)lyricTableView {
+    if (!_lyricTableView) {
+        _lyricTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+        _lyricTableView.backgroundColor = [UIColor clearColor];
+        _lyricTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+        _lyricTableView.showsVerticalScrollIndicator = NO;
+        _lyricTableView.hidden = YES;
+        _lyricTableView.alpha = 0.0;
+        _lyricTableView.dataSource = (id<UITableViewDataSource>)self;
+        _lyricTableView.delegate = (id<UITableViewDelegate>)self;
+        _lyricTableView.rowHeight = 32.0;
+        _lyricTableView.contentInset = UIEdgeInsetsMake(120, 0, 120, 0);
+        [_lyricTableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"LyricCell"];
+    }
+    return _lyricTableView;
+}
+#pragma mark - 歌词解析 & 表格
+
+- (void)buildLyricLinesFromRawText:(NSString *)rawLyric {
+    NSMutableArray<NLLyricLine *> *result = [NSMutableArray array];
+    NSArray<NSString *> *lines = [rawLyric componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    NSCharacterSet *trimSet = [NSCharacterSet whitespaceAndNewlineCharacterSet];
+
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"\\[(\\d{2}):(\\d{2})\\.(\\d{2,3})\\]" options:0 error:NULL];
+
+    for (NSString *line in lines) {
+        NSString *trimmed = [line stringByTrimmingCharactersInSet:trimSet];
+        if (trimmed.length == 0) continue;
+
+        NSArray<NSTextCheckingResult *> *matches = [regex matchesInString:trimmed options:0 range:NSMakeRange(0, trimmed.length)];
+        if (matches.count == 0) continue;
+
+        // 文本部分在最后一个 time tag 之后
+        NSTextCheckingResult *lastMatch = matches.lastObject;
+        NSUInteger textStart = NSMaxRange(lastMatch.range);
+        if (textStart >= trimmed.length) continue;
+        NSString *text = [[trimmed substringFromIndex:textStart] stringByTrimmingCharactersInSet:trimSet];
+        if (text.length == 0) continue;
+
+        for (NSTextCheckingResult *m in matches) {
+            if (m.numberOfRanges < 4) continue;
+            NSString *mmStr = [trimmed substringWithRange:[m rangeAtIndex:1]];
+            NSString *ssStr = [trimmed substringWithRange:[m rangeAtIndex:2]];
+            NSString *ffStr = [trimmed substringWithRange:[m rangeAtIndex:3]];
+            NSInteger mm = mmStr.integerValue;
+            NSInteger ss = ssStr.integerValue;
+            NSInteger ff = ffStr.integerValue;
+            NSTimeInterval time = mm * 60 + ss + (ff >= 100 ? ff / 1000.0 : ff / 100.0);
+
+            NLLyricLine *lineObj = [[NLLyricLine alloc] init];
+            lineObj.time = time;
+            lineObj.text = text;
+            [result addObject:lineObj];
+        }
+    }
+
+    [result sortUsingComparator:^NSComparisonResult(NLLyricLine *a, NLLyricLine *b) {
+        if (a.time < b.time) return NSOrderedAscending;
+        if (a.time > b.time) return NSOrderedDescending;
+        return NSOrderedSame;
+    }];
+
+    self.lyricLines = result;
+    self.currentLyricIndex = -1;
+    [self.lyricTableView reloadData];
+}
+
+- (void)showLyricView:(BOOL)show {
+    self.lyricVisible = show;
+    if (show) {
+        // 展开中部区域为歌词模式（不影响队列按钮和列表）
+        [self.playerView setLyricPanelVisible:YES animated:YES];
+        self.lyricTableView.hidden = NO;
+        [UIView animateWithDuration:0.25 animations:^{
+            self.lyricTableView.alpha = 1.0;
+        }];
+    } else {
+        // 收起歌词区域，恢复大封面样式
+        [UIView animateWithDuration:0.25 animations:^{
+            self.lyricTableView.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            self.lyricTableView.hidden = YES;
+        }];
+        [self.playerView setLyricPanelVisible:NO animated:YES];
+    }
+}
+
+- (void)updateLyricForCurrentTime:(NSTimeInterval)currentTime {
+    if (!self.lyricLines || self.lyricLines.count == 0) return;
+    // 找到当前时间所在的行：根据时间前进/后退决定起始搜索位置
+    NSInteger start = 0;
+    if (self.currentLyricIndex >= 0 && self.currentLyricIndex < (NSInteger)self.lyricLines.count) {
+        NSTimeInterval lastTime = self.lyricLines[self.currentLyricIndex].time;
+        if (currentTime >= lastTime) {
+            // 时间向前（正常播放/快进）：从当前行往后找，加速
+            start = self.currentLyricIndex;
+        } else {
+            // 时间往回跳：从头开始重新匹配（也可以改成从更前几行开始）
+            start = 0;
+        }
+    }
+    NSInteger targetIndex = -1;
+
+    for (NSInteger i = start; i < self.lyricLines.count; i++) {
+        NLLyricLine *line = self.lyricLines[i];
+        NSTimeInterval nextTime = (i + 1 < self.lyricLines.count) ? self.lyricLines[i + 1].time : DBL_MAX;
+        if (currentTime >= line.time && currentTime < nextTime) {
+            targetIndex = i;
+            break;
+        }
+    }
+    if (targetIndex == -1 && currentTime < self.lyricLines.firstObject.time) {
+        targetIndex = 0;
+    }
+    if (targetIndex == -1) return;
+    if (targetIndex == self.currentLyricIndex) return;
+
+    self.currentLyricIndex = targetIndex;
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:targetIndex inSection:0];
+    [self.lyricTableView reloadData];
+    [self.lyricTableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
+}
+
+#pragma mark - UITableViewDataSource
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return self.lyricLines.count > 0 ? self.lyricLines.count : 1;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"LyricCell" forIndexPath:indexPath];
+    cell.backgroundColor = UIColor.clearColor;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.textLabel.textAlignment = NSTextAlignmentCenter;
+    cell.textLabel.numberOfLines = 0;
+
+    if (self.lyricLines.count == 0) {
+        cell.textLabel.text = @"暂无歌词";
+        cell.textLabel.textColor = [UIColor secondaryLabelColor];
+        cell.textLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightRegular];
+        return cell;
+    }
+
+    NLLyricLine *line = self.lyricLines[indexPath.row];
+    cell.textLabel.text = line.text;
+    BOOL isCurrent = (indexPath.row == self.currentLyricIndex);
+    cell.textLabel.textColor = isCurrent ? [UIColor labelColor] : [UIColor secondaryLabelColor];
+    cell.textLabel.font = isCurrent ? [UIFont boldSystemFontOfSize:18] : [UIFont systemFontOfSize:16];
+    return cell;
+}
+
 @end
+

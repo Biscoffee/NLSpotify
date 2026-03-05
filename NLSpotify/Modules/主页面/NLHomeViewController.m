@@ -10,6 +10,8 @@
 #import "NLSectionViewModel.h"
 #import "NLPlaylistCell.h"
 #import "NLSingerAlbumCell.h"
+#import "NLHomeSectionHeaderView.h"
+
 #import "Masonry/Masonry.h"
 #import "NLSongListViewController.h"
 #import "NLDrawerViewController.h"
@@ -28,8 +30,6 @@
 
 @implementation NLHomeViewController
 
-#pragma mark - Lifecycle
-
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor systemBackgroundColor];
@@ -43,108 +43,6 @@
 
 - (void)pressBtn:(id)sender {
     NSLog(@"Bar button tapped");
-}
-
-- (void)openDrawer {
-    if (self.drawerVC) return;
-    NLDrawerViewController *drawer = [[NLDrawerViewController alloc] init];
-    drawer.delegate = self;
-    __weak typeof(self) w = self;
-    drawer.onDidDismiss = ^{
-        w.drawerVC = nil;
-    };
-    self.drawerVC = drawer;
-    [drawer presentFromHostViewController:self.navigationController ?: self];
-}
-
-#pragma mark - NLDrawerViewControllerDelegate
-
-- (void)drawerController:(NLDrawerViewController *)controller didSelectMenuAtIndex:(NSInteger)index {
-    // 菜单顺序：0 添加帐号 1 新增内容 2 收听统计 3 最近播放 4 设置 5 一键清空 6 退出登录
-    if (index == 3) {
-        __weak typeof(self) w = self;
-        [controller dismissWithAnimation:YES completion:^{
-            __strong typeof(w) s = w;
-            if (!s) return;
-            NLRecentPlayViewController *vc = [[NLRecentPlayViewController alloc] init];
-            [s.navigationController pushViewController:vc animated:YES];
-        }];
-        return;
-    }
-    if (index == 5) {
-        __weak typeof(self) w = self;
-        [controller dismissWithAnimation:YES completion:^{
-            [w showClearAllConfirmation];
-        }];
-        return;
-    }
-    if (index == 6) {
-        __weak typeof(self) w = self;
-        [controller dismissWithAnimation:YES completion:^{
-            [w showLogoutConfirmation];
-        }];
-        return;
-    }
-    NSLog(@"[Drawer] 菜单项 %ld", (long)index);
-}
-
-- (void)drawerControllerDidTapProfile:(NLDrawerViewController *)controller {
-    NSLog(@"[Drawer] 点击个人资料");
-}
-
-- (void)drawerControllerDidTapStatusButton:(NLDrawerViewController *)controller {
-    NSLog(@"[Drawer] 点击状态按钮");
-}
-
-- (void)drawerControllerDidTapNewMessage:(NLDrawerViewController *)controller {
-    NSLog(@"[Drawer] 点击新消息");
-}
-
-- (void)showClearAllConfirmation {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"一键清空"
-                                                                   message:@"将清除所有缓存与已下载音乐，且无法恢复。确定继续吗？"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    __weak typeof(self) w = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"清空" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        [w performClearAll];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
-- (void)performClearAll {
-    [[NLDownloadManager sharedManager] cancelAllDownloads];
-    [NLDownloadRepository clearAllDownloadItems];
-    [NLSongRepository clearAllDownloadedSongs];
-    [[NLCacheManager sharedManager] clearAllCache];
-}
-
-- (void)showLogoutConfirmation {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"退出登录"
-                                                                   message:@"确定要退出登录吗？"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    __weak typeof(self) w = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        [w performLogout];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
-- (void)performLogout {
-    [NLAuthManager logout];
-
-    NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:loginVC];
-    nav.navigationBarHidden = YES;
-
-    UIWindow *window = self.view.window ?: [UIApplication sharedApplication].windows.firstObject;
-    if (!window) return;
-    CATransition *transition = [CATransition animation];
-    transition.duration = 0.5;
-    transition.type = kCATransitionFade;
-    [window.layer addAnimation:transition forKey:kCATransition];
-    window.rootViewController = nav;
 }
 
 #pragma mark - Layout & Data
@@ -179,6 +77,7 @@
 - (void)loadData {
     if (!self.collapsedSections) self.collapsedSections = [NSMutableSet set];
     self.homeVM = [[NLHomeViewModel alloc] init];
+    // self -> homeVM -. block -> self
     __weak typeof(self) weakself = self;
     [self.homeVM loadDataWithCompletion:^{
         __strong typeof(weakself) self = weakself;
@@ -198,52 +97,40 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView
          cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NLSectionViewModel *sectionVM =
-    [self.homeVM sectionAtIndex:indexPath.section];
+    NLSectionViewModel *sectionVM =  [self.homeVM sectionAtIndex:indexPath.section];
     __weak typeof(self) weakSelf = self;
 
     if (sectionVM.style == NLHomeSectionStylePlaylist) {
-
         NLPlaylistCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:@"PlaylistCell"
-                                        forIndexPath:indexPath];
+        [tableView dequeueReusableCellWithIdentifier:@"PlaylistCell" forIndexPath:indexPath];
         [cell configWithSectionVM:sectionVM];
         cell.sectionIndex = indexPath.section;
         cell.collapsed = [self.collapsedSections containsObject:@(indexPath.section)];
-        cell.didTapHeader = ^(NSInteger sectionIndex) {
-            __strong typeof(weakSelf) self = weakSelf;
-            if (self) [self toggleSectionCollapsed:sectionIndex];
-        };
         cell.didSelectPlaylist = ^(NLRecommendAlbumListModel *model) {
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
-            [self handlePlaylistSelected:model];
+            NSLog(@"[Home] 点击小歌单: %@", model.name);
+            NLSongListViewController *vc = [[NLSongListViewController alloc] initWithId:model.playlistId type:NLSongListTypePlaylist name:model.name];
+            [self.navigationController pushViewController:vc animated:YES];
         };
-
         return cell;
     }
-
-    if (sectionVM.style == NLHomeSectionStyleSingerAlbum) {
-
-        NLSingerAlbumCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:@"SingerAlbumCell"
+ if (sectionVM.style == NLHomeSectionStyleSingerAlbum) {
+        NLSingerAlbumCell *cell = [tableView dequeueReusableCellWithIdentifier:@"SingerAlbumCell"
                                         forIndexPath:indexPath];
-        [cell configWithSectionVM:sectionVM];
-        cell.sectionIndex = indexPath.section;
-        cell.collapsed = [self.collapsedSections containsObject:@(indexPath.section)];
-        cell.didTapHeader = ^(NSInteger sectionIndex) {
-            __strong typeof(weakSelf) self = weakSelf;
-            if (self) [self toggleSectionCollapsed:sectionIndex];
-        };
-        cell.didSelectSingerAlbum = ^(NLSingerAlbumListModel *model) {
+     [cell configWithSectionVM:sectionVM];
+     cell.sectionIndex = indexPath.section;
+     cell.collapsed = [self.collapsedSections containsObject:@(indexPath.section)];
+     cell.didSelectSingerAlbum = ^(NLSingerAlbumListModel *model) {
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
-            [self handleSingerAlbumSelected:model];
+            NSLog(@"[Home] 点击歌手专辑: %@", model.title);
+            NLSongListViewController *vc = [[NLSongListViewController alloc] initWithId:model.cardId type:NLSongListTypeAlbum name:model.title];
+            [self.navigationController pushViewController:vc animated:YES];
         };
-
         return cell;
     }
-
+    // 兜底，防止炸掉
     return [UITableViewCell new];
 }
 
@@ -251,51 +138,143 @@
 - (void)toggleSectionCollapsed:(NSInteger)section {
     if (section < 0) return;
     NSNumber *key = @(section);
-    if ([self.collapsedSections containsObject:key]) {
-        [self.collapsedSections removeObject:key];
-    } else {
+    BOOL isCollapsing = ![self.collapsedSections containsObject:key];
+    if (isCollapsing) {
         [self.collapsedSections addObject:key];
+    } else {
+        [self.collapsedSections removeObject:key];
     }
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:section];
-    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-}
+    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:section] withRowAnimation:UITableViewRowAnimationFade];
 
-
-- (void)handlePlaylistSelected:(NLRecommendAlbumListModel *)model {
-    NSLog(@"[Home] 点击小歌单: %@", model.name);
-    NLSongListViewController *vc = [[NLSongListViewController alloc] initWithId:model.playlistId type:NLSongListTypePlaylist name:model.name];
-    [self.navigationController pushViewController:vc animated:YES];
-}
-
-- (void)handleSingerAlbumSelected:(NLSingerAlbumListModel *)model {
-    NSLog(@"[Home] 点击歌手专辑: %@", model.title);
-    NLSongListViewController *vc = [[NLSongListViewController alloc] initWithId:model.cardId type:NLSongListTypeAlbum name:model.title];
-    [self.navigationController pushViewController:vc animated:YES];
-}
-
-
-- (CGFloat)tableView:(UITableView *)tableView
-heightForHeaderInSection:(NSInteger)section {
-    if (section == 0) {
-        return 0.01;
+    // 折叠最后一个 section 时，contentSize 变小，系统会调整 contentOffset 导致列表整体上移；这里在布局完成后把列表顶在底部留 140pt 间距，避免“向上滑一段”
+    if (isCollapsing && section == [self.homeVM numberOfSections] - 1) {
+        __weak UITableView *weakTable = self.tableView;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakTable layoutIfNeeded];
+            CGFloat contentH = weakTable.contentSize.height;
+            CGFloat visibleH = weakTable.bounds.size.height - weakTable.contentInset.top - weakTable.contentInset.bottom;
+            CGFloat targetY = contentH - visibleH + weakTable.contentInset.top + 140; // 底部留 140pt
+            if (targetY < 0) targetY = 0;
+            [weakTable setContentOffset:CGPointMake(0, targetY) animated:NO];
+        });
     }
-    return 10;
 }
 
-- (CGFloat)tableView:(UITableView *)tableView
-heightForFooterInSection:(NSInteger)section {
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    return NLHomeSectionHeaderHeight;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
     return 0.01; // 必须 >0，否则 grouped 会给默认高度
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if ([self.collapsedSections containsObject:@(indexPath.section)]) {
+        return 1; // 折叠后行高缩小，仅留 1pt
+    }
+    NLSectionViewModel *sectionVM = [self.homeVM sectionAtIndex:indexPath.section];
+    if (sectionVM.style == NLHomeSectionStyleSingerAlbum) return 280;
+    if (sectionVM.style == NLHomeSectionStylePlaylist) return 180;
+    return 180;
 }
 
 - (UIView *)tableView:(UITableView *)tableView
 viewForHeaderInSection:(NSInteger)section {
-    return [UIView new];
+    NLHomeSectionHeaderView *header = [tableView dequeueReusableHeaderFooterViewWithIdentifier:@"NLHomeSectionHeader"];
+    if (!header) return [UIView new];
+    NLSectionViewModel *sectionVM = [self.homeVM sectionAtIndex:section];
+    header.sectionIndex = section;
+    header.collapsed = [self.collapsedSections containsObject:@(section)];
+    [header configWithSectionVM:sectionVM collapsed:header.collapsed];
+    __weak typeof(self) weakSelf = self;
+    header.didTapHeader = ^(NSInteger sectionIndex) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (self) [self toggleSectionCollapsed:sectionIndex];
+    };
+    return header;
 }
 
 - (UIView *)tableView:(UITableView *)tableView
 viewForFooterInSection:(NSInteger)section {
     return [UIView new];
 }
+
+#pragma mark - DrawerView相关
+
+- (void)openDrawer {
+    if (self.drawerVC) return;
+    NLDrawerViewController *drawer = [[NLDrawerViewController alloc] init];
+    drawer.delegate = self;
+    __weak typeof(self) w = self;
+    drawer.drawrDidDismiss = ^{
+        w.drawerVC = nil;
+    };
+    self.drawerVC = drawer;
+    // 从主视图推出
+    [drawer presentFromHostViewController:self.navigationController ?: self];
+}
+
+- (void)drawerController:(NLDrawerViewController *)controller didSelectMenuAtIndex:(NSInteger)index {
+    // 菜单顺序：0 添加帐号 1 新增内容 2 收听统计 3 最近播放 4 设置 5 一键清空 6 退出登录
+    if (index == 3) {
+        __weak typeof(self) w = self;
+        [controller dismissWithAnimation:YES completion:^{
+            __strong typeof(w) s = w;
+            if (!s) return;
+            NLRecentPlayViewController *vc = [[NLRecentPlayViewController alloc] init];
+            [s.navigationController pushViewController:vc animated:YES];
+        }];
+        return;
+    }
+    if (index == 5) {
+        __weak typeof(self) w = self;
+        [controller dismissWithAnimation:YES completion:^{
+            [self showClearAllConfirmation];
+        }];
+        return;
+    }
+    if (index == 6) {
+        __weak typeof(self) w = self;
+        [controller dismissWithAnimation:YES completion:^{
+            __strong typeof(w) s = w;
+            if (!s) return;
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"退出登录" message:@"确定要退出登录吗？"preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+            [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+                NSLog(@"[测试] 退出登录（用户确认）");
+                [NLAuthManager logout];
+                NLLoginViewController *loginVC = [[NLLoginViewController alloc] init];
+                UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:loginVC];
+                nav.navigationBarHidden = YES;
+
+                UIWindow *window = s.view.window ?: [UIApplication sharedApplication].windows.firstObject;
+                if (!window) return;
+                window.rootViewController = nav;
+            }]];
+            [s presentViewController:alert animated:YES completion:nil];
+        }];
+        return;
+    }
+    NSLog(@"[Drawer] 菜单项 %ld", (long)index);
+}
+
+- (void)showClearAllConfirmation {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"一键清空"
+                                                                   message:@"将清除所有缓存与已下载音乐，且无法恢复。确定继续吗？"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) w = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"清空" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        [[NLDownloadManager sharedManager] cancelAllDownloads];
+        [NLDownloadRepository clearAllDownloadItems];
+        [NLSongRepository clearAllDownloadedSongs];
+        [[NLCacheManager sharedManager] clearAllCache];
+    }]];
+    [w presentViewController:alert animated:YES completion:nil];
+}
+
 
 #pragma mark - Getters
 
@@ -307,11 +286,13 @@ viewForFooterInSection:(NSInteger)section {
         _tableView.dataSource = self;
         _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
         _tableView.rowHeight = UITableViewAutomaticDimension;
-        _tableView.estimatedRowHeight = 220;
+        _tableView.estimatedRowHeight = 220;    //预估高度
+        [_tableView registerClass:NLHomeSectionHeaderView.class forHeaderFooterViewReuseIdentifier:@"NLHomeSectionHeader"];
         [_tableView registerClass:NLPlaylistCell.class forCellReuseIdentifier:@"PlaylistCell"];
         [_tableView registerClass:NLSingerAlbumCell.class forCellReuseIdentifier:@"SingerAlbumCell"];
     }
     return _tableView;
 }
+
 
 @end

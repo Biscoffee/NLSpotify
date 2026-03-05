@@ -13,12 +13,12 @@ NS_ASSUME_NONNULL_BEGIN
 @interface NLHeaderModel : NSObject
 
 @property (nonatomic, assign) NSInteger playlistId;
-@property (nonatomic, copy) NSString *name;          // 歌单名
-@property (nonatomic, copy) NSString *coverUrl;      // 歌单封面
-@property (nonatomic, copy) NSString *desc;          // 描述
-@property (nonatomic, copy) NSString *creatorName;   // 创建者昵称
-@property (nonatomic, copy) NSString *creatorAvatar; // 创建者头像
-/// YES 时不显示简介区域（用于自建歌单）
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, copy) NSString *coverUrl;
+@property (nonatomic, copy) NSString *desc;
+@property (nonatomic, copy) NSString *creatorName;
+@property (nonatomic, copy) NSString *creatorAvatar;
+// YES 时不显示简介区域，自建歌单时为NO
 @property (nonatomic, assign) BOOL hideDescription;
 
 @end

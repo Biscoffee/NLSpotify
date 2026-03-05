@@ -10,6 +10,7 @@
 #import "NLSongListCell.h"
 #import "NLPlayerManager.h"
 #import "NLSongService.h"
+#import "NLLikedSongsPickerViewController.h"
 #import <Masonry/Masonry.h>
 
 static NSString * const kUserPlayListSongCellId = @"UserPlayListSongCell";
@@ -38,6 +39,9 @@ static NSString * const kUserPlayListSongCellId = @"UserPlayListSongCell";
                                                                              style:UIBarButtonItemStylePlain
                                                                             target:self
                                                                             action:@selector(backTapped)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd
+                                                                                           target:self
+                                                                                           action:@selector(addLikedSongsTapped)];
 
     self.navigationController.interactivePopGestureRecognizer.delegate = self;
     self.navigationController.interactivePopGestureRecognizer.enabled = YES;
@@ -64,6 +68,12 @@ static NSString * const kUserPlayListSongCellId = @"UserPlayListSongCell";
 
 - (void)backTapped {
     [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (void)addLikedSongsTapped {
+    // 打开「从我喜欢的歌曲选择」页面，勾选要加入当前歌单的歌曲
+    NLLikedSongsPickerViewController *vc = [[NLLikedSongsPickerViewController alloc] initWithPlayList:self.playlist];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 - (void)loadData {

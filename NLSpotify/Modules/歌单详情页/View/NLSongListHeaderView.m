@@ -31,8 +31,6 @@
 
 @implementation NLSongListHeaderView
 
-#pragma mark - Init
-
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
@@ -44,8 +42,6 @@
     }
     return self;
 }
-
-#pragma mark - Setup
 
 - (void)setupSubviews {
     // 封面
@@ -283,7 +279,6 @@
     CGFloat width = [UIScreen mainScreen].bounds.size.width - 48;
     CGFloat lineHeight = _descLabel.font.lineHeight;
     CGFloat threeLineHeight = lineHeight * 3 + 4;
-    
     CGSize maxSize = CGSizeMake(width, CGFLOAT_MAX);
     CGRect fitRect = [_fullDescText boundingRectWithSize:maxSize
                                                 options:NSStringDrawingUsesLineFragmentOrigin
@@ -296,7 +291,6 @@
     [_expandDescButton mas_updateConstraints:^(MASConstraintMaker *make) {
         make.height.mas_equalTo(needsExpand ? 28 : 0);
     }];
-    
     if (needsExpand) {
         [_expandDescButton setTitle:_descExpanded ? @"收起" : @"更多" forState:UIControlStateNormal];
     }

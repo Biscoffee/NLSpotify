@@ -53,23 +53,27 @@ static const CGFloat kDrawerWidthRatio = 0.78f;
                        messageSection:_messageSectionModel];
 }
 
-#pragma mark - Present / Dismiss
+#pragma mark - 弹出childVC和回缩childVC和Delegate
 
 - (void)presentFromHostViewController:(UIViewController *)host {
     if (self.parentViewController) return;
-
     CGFloat w = host.view.bounds.size.width * kDrawerWidthRatio;
     _drawerWidth = w > kDrawerMaxWidth ? kDrawerMaxWidth : w;
 
+    /* 添加子VC
+     1. 建立关系，adddChild，addSubview, didMove...
+     2. 初始状态
+     */
     [host addChildViewController:self];
     [host.view addSubview:self.view];
-    [self didMoveToParentViewController:host];
-
     [self.view mas_makeConstraints:^(MASConstraintMaker *make) {
         make.edges.equalTo(host.view);
     }];
+    [self didMoveToParentViewController:host];
+
 
     self.dimmingView.alpha = 0;
+    // 在做动画值钱要先让布局确定下来，ai说的
     [self.view setNeedsLayout];
     [self.view layoutIfNeeded];
 
@@ -86,16 +90,15 @@ static const CGFloat kDrawerWidthRatio = 0.78f;
 
 - (void)dismissWithAnimation:(BOOL)animated completion:(void (^)(void))completion {
     __weak typeof(self) w = self;
-    void (^doRemove)(void) = ^{
+    void (^removeDrawer)(void) = ^{
         [w willMoveToParentViewController:nil];
         [w.view removeFromSuperview];
         [w removeFromParentViewController];
-        if (w.onDidDismiss) w.onDidDismiss();
+        if (w.drawrDidDismiss) w.drawrDidDismiss();
         if (completion) completion();
     };
-
     if (!animated) {
-        doRemove();
+        removeDrawer();
         return;
     }
 
@@ -108,37 +111,16 @@ static const CGFloat kDrawerWidthRatio = 0.78f;
         self.dimmingView.alpha = 0;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        doRemove();
+        removeDrawer();
     }];
 }
-
-#pragma mark - NLDrawerViewDelegate
 
 - (void)drawerView:(NLDrawerView *)view didSelectMenuAtIndex:(NSInteger)index {
     if (index < 0 || index >= (NSInteger)_menuItems.count) return;
     if ([self.delegate respondsToSelector:@selector(drawerController:didSelectMenuAtIndex:)]) {
         [self.delegate drawerController:self didSelectMenuAtIndex:index];
     }
-    if (self.onRequestClose) self.onRequestClose();
     [self dismissWithAnimation:YES completion:nil];
-}
-
-- (void)drawerViewDidTapProfile:(NLDrawerView *)view {
-    if ([self.delegate respondsToSelector:@selector(drawerControllerDidTapProfile:)]) {
-        [self.delegate drawerControllerDidTapProfile:self];
-    }
-}
-
-- (void)drawerViewDidTapStatusButton:(NLDrawerView *)view {
-    if ([self.delegate respondsToSelector:@selector(drawerControllerDidTapStatusButton:)]) {
-        [self.delegate drawerControllerDidTapStatusButton:self];
-    }
-}
-
-- (void)drawerViewDidTapNewMessage:(NLDrawerView *)view {
-    if ([self.delegate respondsToSelector:@selector(drawerControllerDidTapNewMessage:)]) {
-        [self.delegate drawerControllerDidTapNewMessage:self];
-    }
 }
 
 #pragma mark - Getters
@@ -171,7 +153,6 @@ static const CGFloat kDrawerWidthRatio = 0.78f;
 }
 
 - (void)dimmingTapped {
-    if (self.onRequestClose) self.onRequestClose();
     [self dismissWithAnimation:YES completion:nil];
 }
 

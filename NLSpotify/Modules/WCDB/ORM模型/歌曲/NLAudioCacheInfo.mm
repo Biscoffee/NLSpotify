@@ -18,7 +18,7 @@ WCDB_SYNTHESIZE(cachedRangesString)
 WCDB_SYNTHESIZE(lastAccessTime)
 WCDB_SYNTHESIZE(isFinished)
 
-// 将 urlMD5 设置为主键，因为一个 URL 只对应唯一的一份缓存记录
+// 将 urlMD5 设置为主键
 WCDB_PRIMARY(urlMD5)
 
 @end

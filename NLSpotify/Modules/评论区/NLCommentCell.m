@@ -78,7 +78,6 @@
         UITapGestureRecognizer *tap =
         [[UITapGestureRecognizer alloc] initWithTarget:self
                                                  action:@selector(textTap)];
-
         [_contentLabel addGestureRecognizer:tap];
         _contentLabel.userInteractionEnabled = YES;
     }
@@ -88,7 +87,6 @@
 - (void)textTap {
     self.comment.isExpanded = !self.comment.isExpanded;
     [self updateContentLabel];
-
     if (self.expandBlock) {
         self.expandBlock();
     }
@@ -102,15 +100,11 @@
     NLCommentModel *comment = self.comment;
     CGFloat width = [UIScreen mainScreen].bounds.size.width - 74;
     UIFont *font = [UIFont systemFontOfSize:15];
-
     // 文本缓存：第一次计算折叠 / 展开富文本，后续直接复用
     if (!comment.collapsedAttr && !comment.expandedAttr) {
         BOOL needExpand =
-        [NLCommentTextFolder textNeedExpand:comment.content
-                                      width:width
-                                       font:font];
+        [NLCommentTextFolder textNeedExpand:comment.content width:width font:font];
         comment.needExpand = needExpand;
-
         if (!needExpand) {
             NSDictionary *attrs = @{
                 NSFontAttributeName : font,
@@ -119,13 +113,10 @@
             NSString *text = comment.content ?: @"";
             comment.collapsedAttr = [[NSAttributedString alloc] initWithString:text attributes:attrs];
         } else {
-            comment.collapsedAttr =
-            [NLCommentTextFolder collapsedText:comment.content font:font width:width];
-            comment.expandedAttr =
-            [NLCommentTextFolder expandedText:comment.content font:font];
+            comment.collapsedAttr = [NLCommentTextFolder collapsedText:comment.content font:font width:width];
+            comment.expandedAttr = [NLCommentTextFolder expandedText:comment.content font:font];
         }
     }
-
     if (!comment.needExpand) {
         _contentLabel.attributedText = comment.collapsedAttr;
     } else {
@@ -136,11 +127,9 @@
 - (void)setComment:(NLCommentModel *)comment {
     _comment = comment;
     [self updateContentLabel];
-
     _nicknameLabel.text = comment.user.nickname ?: @"匿名";
     _timeLabel.text = [self timeStringFromTimestamp:comment.time];
     _likedLabel.text = comment.likedCount > 0 ? [NSString stringWithFormat:@"♥ %ld", (long)comment.likedCount] : @"";
-
     if (comment.user.avatarUrl.length > 0) {
         NSString *avatarUrl = [self urlStringByReplacingHttpWithHttps:comment.user.avatarUrl];
         [_avatarView sd_setImageWithURL:[NSURL URLWithString:avatarUrl] placeholderImage:nil];

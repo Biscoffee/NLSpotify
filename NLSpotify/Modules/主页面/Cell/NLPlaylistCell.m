@@ -70,7 +70,6 @@
 - (UICollectionViewCell *)configureCollectionCell:(UICollectionView *)collectionView indexPath:(NSIndexPath *)indexPath item:(id)item {
   PlaylistCollectionCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PlaylistCollectionCell" forIndexPath:indexPath];
   [cell configWithModel:(NLRecommendAlbumListModel *)item];
-  self.titleLabel.hidden = NO;
   return cell;
 }
 

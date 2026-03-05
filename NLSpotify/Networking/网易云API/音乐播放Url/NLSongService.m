@@ -65,4 +65,43 @@ static NSString *firstSongIdFromString(NSString *ids) {
     }];
 }
 
+- (void)fetchLyricWithSongId:(NSString *)songId
+                     success:(SongLyricFetchSuccess)success
+                     failure:(SongFetchFailure)failure {
+    if (!songId || songId.length == 0) {
+        NSLog(@"[NLSongService] 歌曲 ID 为空，无法拉取歌词");
+        if (failure) {
+            failure([NSError errorWithDomain:@"NLSongService"
+                                        code:400
+                                    userInfo:@{NSLocalizedDescriptionKey : @"歌曲 ID 为空"}]);
+        }
+        return;
+    }
+    NSLog(@"[NLSongService] 开始获取歌词 songId=%@", songId);
+    NSDictionary *params = @{@"id": songId};
+
+    [[NetWorkManager sharedManager] GET:@"/lyric" parameters:params success:^(id  _Nonnull responseObject) {
+        NSString *lyric = nil;
+        NSDictionary *lrc = [responseObject isKindOfClass:[NSDictionary class]] ? responseObject[@"lrc"] : nil;
+        if ([lrc isKindOfClass:[NSDictionary class]]) {
+            id lyricObj = lrc[@"lyric"];
+            if ([lyricObj isKindOfClass:[NSString class]]) {
+                lyric = (NSString *)lyricObj;
+            }
+        }
+        if (!lyric) {
+            lyric = @"";
+        }
+        NSLog(@"[NLSongService] 获取歌词成功，长度=%lu", (unsigned long)lyric.length);
+        if (success) {
+            success(lyric);
+        }
+    } failure:^(NSError * _Nonnull error) {
+        NSLog(@"[NLSongService] 获取歌词失败 songId=%@ error=%@", songId, error);
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
 @end

@@ -17,7 +17,7 @@ WCDB_SYNTHESIZE(coverURL)
 WCDB_SYNTHESIZE(isUserCreated)
 WCDB_SYNTHESIZE(createTime)
 
-WCDB_PRIMARY(playlistId) // 歌单 ID 作为绝对主键
+WCDB_PRIMARY(playlistId) // 歌单 ID 作为主键
 
 - (instancetype)initWithId:(NSString *)playlistId name:(NSString *)name isUserCreated:(BOOL)isUserCreated {
     if (self = [super init]) {

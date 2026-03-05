@@ -9,12 +9,6 @@
 #import "NLSingerAlbumListModel.h"
 #import "SDWebImage/SDWebImage.h"
 
-@interface NLSingerAlbumCell ()
-@property (nonatomic, strong, readwrite) UIImageView *userAvatar;
-@property (nonatomic, strong, readwrite) UILabel *labelSmall;
-@property (nonatomic, strong, readwrite) UILabel *userName;
-@end
-
 @implementation SingerAlbumCollectionCell
 {
 
@@ -86,69 +80,11 @@
 
 @implementation NLSingerAlbumCell
 
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (self) {
-        self.titleLabel.hidden = YES;
-
-        _userAvatar = [[UIImageView alloc] init];
-        _userAvatar.layer.cornerRadius = 18;
-        _userAvatar.clipsToBounds = YES;
-        _userAvatar.backgroundColor = [UIColor tertiarySystemFillColor];
-        [self.contentView addSubview:_userAvatar];
-
-        _labelSmall = [[UILabel alloc] init];
-        _labelSmall.font = [UIFont systemFontOfSize:12];
-        _labelSmall.textColor = [UIColor secondaryLabelColor];
-        _labelSmall.text = @"的粉丝特供";
-        [self.contentView addSubview:_labelSmall];
-
-        _userName = [[UILabel alloc] init];
-        _userName.font = [UIFont boldSystemFontOfSize:16];
-        _userName.textColor = [UIColor labelColor];
-        _userName.text = @"用户名";
-        [self.contentView addSubview:_userName];
-
-        [_userAvatar mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.top.left.equalTo(self.contentView).offset(16);
-            make.width.height.mas_equalTo(36);
-        }];
-
-        [_labelSmall mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.top.equalTo(_userAvatar.mas_top);
-            make.left.equalTo(_userAvatar.mas_right).offset(16);
-            make.right.equalTo(self.contentView).offset(-16);
-        }];
-
-        [_userName mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.top.equalTo(_labelSmall.mas_bottom).offset(2);
-            make.left.equalTo(_labelSmall.mas_left);
-            make.right.equalTo(self.contentView).offset(-16);
-        }];
-
-        [self.collectionView mas_remakeConstraints:^(MASConstraintMaker *make) {
-            make.top.equalTo(_userName.mas_bottom).offset(12);
-            make.left.right.bottom.equalTo(self.contentView);
-            make.height.mas_equalTo(0);
-        }];
-    }
-    return self;
-}
-
-- (void)configWithSectionVM:(NLSectionViewModel *)sectionVM {
-    [super configWithSectionVM:sectionVM];
-    if (sectionVM.style != NLHomeSectionStyleSingerAlbum || sectionVM.items.count == 0) return;
-    NLSingerAlbumListModel *first = (NLSingerAlbumListModel *)sectionVM.items.firstObject;
-    [_userAvatar sd_setImageWithURL:[NSURL URLWithString:first.singerUrl]];
-    _userName.text = first.singer;
-}
-
 - (void)registerCollectionCells {
   [self.collectionView registerClass:SingerAlbumCollectionCell.class forCellWithReuseIdentifier:@"SingerAlbumCollectionCell"];
   self.collectionView.backgroundColor = [UIColor systemBackgroundColor];
   self.contentView.backgroundColor = [UIColor systemBackgroundColor];
   self.backgroundColor = [UIColor systemBackgroundColor];
-  self.titleLabel.textColor = [UIColor labelColor];
 }
 
 - (CGSize)sizeForCollectionCell {
@@ -158,7 +94,6 @@
 - (UICollectionViewCell *)configureCollectionCell:(UICollectionView *)collectionView indexPath:(NSIndexPath *)indexPath item:(id)item {
   SingerAlbumCollectionCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"SingerAlbumCollectionCell" forIndexPath:indexPath];
   [cell configWithModel:(NLSingerAlbumListModel *)item];
-  self.titleLabel.hidden = YES;
   return cell;
 }
 

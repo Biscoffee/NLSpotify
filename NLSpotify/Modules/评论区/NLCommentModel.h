@@ -24,18 +24,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isExpanded;
 @property (nonatomic, assign) BOOL needExpand;
 
-// 文本缓存（折叠 / 展开）
-@property (nonatomic, copy, nullable) NSAttributedString *collapsedAttr; // 折叠文本缓存
-@property (nonatomic, copy, nullable) NSAttributedString *expandedAttr;  // 展开文本缓存
+// 文本缓存、
+@property (nonatomic, copy, nullable) NSAttributedString *collapsedAttr;
+@property (nonatomic, copy, nullable) NSAttributedString *expandedAttr;
 @property (nonatomic, copy, nullable) NSAttributedString *displayText;
 
-// 高度缓存（折叠 / 展开）
+// 高度缓存
 @property (nonatomic, assign) CGFloat collapsedHeight;
 @property (nonatomic, assign) CGFloat expandedHeight;
 
-/// 回复数量（主评论列表接口可能返回 replyCount）
 @property (nonatomic, assign) NSInteger replyCount;
-/// 部分回复（主评论里可能带几条）
 @property (nonatomic, copy) NSArray<NLCommentModel *> *beReplied;
 
 

@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 #import "NLPlayerManager.h"
+#import "NLExpandableTouchSlider.h"
 
 @class NLMusicPlayerView, NLSong;
 
@@ -28,6 +29,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)musicPlayerViewDidTapAddToPlaylist:(NLMusicPlayerView *)view;
 - (void)musicPlayerViewDidTapMore:(NLMusicPlayerView *)view;
 
+// 点击封面，展示歌词
+- (void)musicPlayerViewDidTapCover:(NLMusicPlayerView *)view;
+
 // 播放队列数据
 - (NSArray<NLSong *> *)musicPlayerViewPlaylist:(NLMusicPlayerView *)view;
 - (NSInteger)musicPlayerViewCurrentIndex:(NLMusicPlayerView *)view;
@@ -46,11 +50,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) UISlider *progressSlider;
 @property (nonatomic, strong, readonly) UISlider *volumeSlider;
 
+// 供歌词视图等使用的中部容器（原播放队列区域）
+@property (nonatomic, strong, readonly) UIView *queueContainerView;
+
 
 
 - (void)updateTitle:(NSString *)title artist:(NSString *)artist;
 - (void)updateCoverURL:(NSURL *)url;
 - (void)updateProgress:(float)progress;
+- (void)refreshProgress;
 - (void)updateCacheProgress:(float)cacheProgress;
 - (void)updateCurrentTime:(NSTimeInterval)currentTime totalTime:(NSTimeInterval)totalTime;
 - (void)updateVolume:(float)volume;
@@ -62,6 +70,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setQueuePanelVisible:(BOOL)visible animated:(BOOL)animated;
 @property (nonatomic, assign, readonly) BOOL isQueuePanelVisible;
 - (void)reloadQueue;
+
+// 歌词模式：只调整封面/队列区域布局，不影响队列按钮和列表的显示状态
+- (void)setLyricPanelVisible:(BOOL)visible animated:(BOOL)animated;
 
 @end
 

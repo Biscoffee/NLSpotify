@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void(^SongURLFetchSuccess)(NSURL *playURL);
 typedef void(^SongFetchFailure)(NSError *error);
+typedef void(^SongLyricFetchSuccess)(NSString *lyric);
 
 @interface NLSongService : NSObject
 
@@ -21,6 +22,11 @@ typedef void(^SongFetchFailure)(NSError *error);
 - (void)fetchPlayableURLWithSongId:(NSString *)songId
                            success:(SongURLFetchSuccess)success
                            failure:(SongFetchFailure)failure;
+
+// 获取歌词原始 LRC 文本
+- (void)fetchLyricWithSongId:(NSString *)songId
+                     success:(SongLyricFetchSuccess)success
+                     failure:(SongFetchFailure)failure;
 
 @end
 

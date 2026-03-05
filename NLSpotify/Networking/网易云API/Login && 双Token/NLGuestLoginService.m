@@ -12,14 +12,11 @@
 
 + (void)anonymousLoginWithSuccess:(void(^)(NSDictionary *))success
                           failure:(void(^)(NSError *))failure {
-
     NSString *path = @"/register/anonimous";
-
     [[NetWorkManager sharedManager] GET:path parameters:nil success:^(id responseObject) {
         if ([responseObject isKindOfClass:[NSDictionary class]]) {
             NSDictionary *response = responseObject;
             NSInteger code = [response[@"code"] integerValue];
-
             if (code == 200) {
                 NSString *cookie = response[@"cookie"];
                 // NSLog(@"[NLGuestLoginService] 接口成功 code=200，取到 cookie: %@，长度=%lu", cookie.length > 0 ? @"是" : @"否", (unsigned long)(cookie.length)); // 专注播放器时先注释

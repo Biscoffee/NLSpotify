@@ -63,11 +63,12 @@
     } failure:^(NSError * _Nonnull error) {
         dispatch_group_leave(group);
     }];
-
+//  当上面这几个group都完成（enter的次数和leave相等）以后执行这个blcok
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         NSMutableArray *valid = [NSMutableArray array];
         for (id obj in sectionsArray) {
             if (![obj isKindOfClass:[NSNull class]]) {
+                // 如果这是空的，也就是没请求，那就不佳
                 [valid addObject:obj];
             }
         }

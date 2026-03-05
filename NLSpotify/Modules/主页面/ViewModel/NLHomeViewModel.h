@@ -12,7 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NLHomeViewModel : NSObject
 
-@property (nonatomic, strong) NSArray *sections;//储存所有分区的section
+@property (nonatomic, strong) NSArray *sections; //储存所有分区的section
 
 - (void)loadDataWithCompletion:(void (^)(void))completion;
 

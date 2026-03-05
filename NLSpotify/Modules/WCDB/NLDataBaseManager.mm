@@ -36,9 +36,9 @@ static NSString * const kHistoryTableName = @"PlaybackHistoryTable";
 }
 
 - (void)setupDatabase {
-    // 获取沙盒 Document 目录路径
+    //获取沙盒 Document 目录路径
     NSString *documentPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    // 拼接数据库文件的完整路径
+    //拼接数据库文件的完整路径
     NSString *dbPath = [documentPath stringByAppendingPathComponent:@"NLSpotify_v2.sqlite"];
     self.database = [[WCTDatabase alloc] initWithPath:dbPath];
     if ([self.database canOpen]) {

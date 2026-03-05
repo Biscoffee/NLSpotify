@@ -33,24 +33,30 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     if (self) {
         self.backgroundColor = [UIColor systemBackgroundColor];
         _scrollView = [[UIScrollView alloc] init];
+        _scrollView.translatesAutoresizingMaskIntoConstraints = NO;
         _scrollView.showsVerticalScrollIndicator = NO;
         _scrollView.alwaysBounceVertical = YES;
         [self addSubview:_scrollView];
 
         _contentView = [[UIView alloc] init];
+        _contentView.translatesAutoresizingMaskIntoConstraints = NO;
         [_scrollView addSubview:_contentView];
 
         _profileSection = [[UIView alloc] init];
+        _profileSection.translatesAutoresizingMaskIntoConstraints = NO;
         [_contentView addSubview:_profileSection];
 
         _separatorView = [[UIView alloc] init];
         _separatorView.backgroundColor = [UIColor separatorColor];
+        _separatorView.translatesAutoresizingMaskIntoConstraints = NO;
         [_contentView addSubview:_separatorView];
 
         _menuSection = [[UIView alloc] init];
+        _menuSection.translatesAutoresizingMaskIntoConstraints = NO;
         [_contentView addSubview:_menuSection];
 
         _messageSection = [[UIView alloc] init];
+        _messageSection.translatesAutoresizingMaskIntoConstraints = NO;
         [_contentView addSubview:_messageSection];
     }
     return self;
@@ -71,7 +77,7 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     for (UIView *sub in _profileSection.subviews) [sub removeFromSuperview];
 
     UIView *profileTapArea = [[UIView alloc] init];
-    profileTapArea.userInteractionEnabled = YES;
+    profileTapArea.translatesAutoresizingMaskIntoConstraints = NO;
     [_profileSection addSubview:profileTapArea];
 
     UIImageView *avatar = [[UIImageView alloc] init];
@@ -106,11 +112,7 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     statusBtn.layer.borderColor = [UIColor separatorColor].CGColor;
     statusBtn.layer.borderWidth = 1;
     statusBtn.layer.cornerRadius = 8;
-    [statusBtn addTarget:self action:@selector(handleStatusButtonTap) forControlEvents:UIControlEventTouchUpInside];
     [_profileSection addSubview:statusBtn];
-
-    UITapGestureRecognizer *profileTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleProfileTap)];
-    [profileTapArea addGestureRecognizer:profileTap];
 
     [profileTapArea mas_makeConstraints:^(MASConstraintMaker *make) {
         make.left.top.bottom.equalTo(_profileSection);
@@ -140,7 +142,6 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
 
 - (void)buildMenuSectionWith:(NSArray<NLDrawerMenuItem *> *)items {
     for (UIView *sub in _menuSection.subviews) [sub removeFromSuperview];
-
     UIView *lastRow = nil;
     for (NSInteger i = 0; i < items.count; i++) {
         NLDrawerMenuItem *item = items[i];
@@ -158,6 +159,7 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
 
 - (UIView *)menuRowWithItem:(NLDrawerMenuItem *)item index:(NSInteger)index {
     UIView *row = [[UIView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
     row.tag = index;
 
     UIImageView *icon = [[UIImageView alloc] init];
@@ -203,18 +205,6 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     }
 }
 
-- (void)handleProfileTap {
-    if ([self.delegate respondsToSelector:@selector(drawerViewDidTapProfile:)]) {
-        [self.delegate drawerViewDidTapProfile:self];
-    }
-}
-
-- (void)handleStatusButtonTap {
-    if ([self.delegate respondsToSelector:@selector(drawerViewDidTapStatusButton:)]) {
-        [self.delegate drawerViewDidTapStatusButton:self];
-    }
-}
-
 - (void)buildMessageSectionWith:(NLDrawerMessageSectionModel *)model {
     for (UIView *sub in _messageSection.subviews) [sub removeFromSuperview];
 
@@ -232,6 +222,7 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
     [_messageSection addSubview:descLabel];
 
     UIView *newMessageRow = [[UIView alloc] init];
+    newMessageRow.translatesAutoresizingMaskIntoConstraints = NO;
     UIImageView *icon = [[UIImageView alloc] init];
     icon.image = [UIImage systemImageNamed:model.messageItemIconName];
     icon.tintColor = [UIColor labelColor];
@@ -266,16 +257,6 @@ static const CGFloat kMessageSectionTopOffset = 8.f;
         make.top.equalTo(descLabel.mas_bottom).offset(16);
         make.height.mas_equalTo(52);
     }];
-
-    newMessageRow.userInteractionEnabled = YES;
-    UITapGestureRecognizer *newMsgTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleNewMessageTap)];
-    [newMessageRow addGestureRecognizer:newMsgTap];
-}
-
-- (void)handleNewMessageTap {
-    if ([self.delegate respondsToSelector:@selector(drawerViewDidTapNewMessage:)]) {
-        [self.delegate drawerViewDidTapNewMessage:self];
-    }
 }
 
 - (void)layoutSubviews {

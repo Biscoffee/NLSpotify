@@ -70,7 +70,7 @@ static NSString * const kLikedSongsTableName = @"LikedSongsTable";
     return [[self safeDatabase] getObjectsOfClass:NLSong.class fromTable:kHistoryTableName];
 }
 
-#pragma mark - 收藏单曲业务
+#pragma mark - 收藏单曲
 
 + (NSArray<NLSong *> *)allLikedSongs {
     NSArray<NLSong *> *songs = [[self safeDatabase] getObjectsOfClass:NLSong.class
@@ -87,7 +87,6 @@ static NSString * const kLikedSongsTableName = @"LikedSongsTable";
     }
 }
 
-/// 判断单曲是否已收藏
 + (BOOL)isSongLiked:(NSString *)songId {
     if (songId.length == 0) return NO;
     NLSong *existSong = [[self safeDatabase] getObjectOfClass:NLSong.class

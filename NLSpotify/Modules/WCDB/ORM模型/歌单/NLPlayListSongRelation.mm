@@ -15,8 +15,7 @@ WCDB_SYNTHESIZE(playlistId)
 WCDB_SYNTHESIZE(songId)
 WCDB_SYNTHESIZE(addTime)
 
-// 这里为了防止引发 WCDB 多主键的 C++ 编译报错，我们不设主键。
-// 去重的逻辑，我们等下直接交给 Repository 用纯 ObjC 代码来做
+// 这里为了防止引发 WCDB 多主键的 C++ 编译报错我们不设主键去重的逻辑，我们直接交给Repository
 
 - (instancetype)initWithPlaylistId:(NSString *)playlistId songId:(NSString *)songId {
     if (self = [super init]) {

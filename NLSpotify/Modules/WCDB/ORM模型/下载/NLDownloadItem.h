@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *artist;
 @property (nonatomic, copy) NSString *coverURLString;
 @property (nonatomic, assign) NSTimeInterval addedTime;
-/// "downloading" | "completed"
+
 @property (nonatomic, copy) NSString *status;
 
 - (NSURL * _Nullable)playURL;

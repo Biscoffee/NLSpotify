@@ -14,9 +14,6 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol NLDrawerViewDelegate <NSObject>
 @optional
 - (void)drawerView:(NLDrawerView *)drawerView didSelectMenuAtIndex:(NSInteger)index;
-- (void)drawerViewDidTapProfile:(NLDrawerView *)drawerView;
-- (void)drawerViewDidTapStatusButton:(NLDrawerView *)drawerView;
-- (void)drawerViewDidTapNewMessage:(NLDrawerView *)drawerView;
 @end
 
 @interface NLDrawerView : UIView

@@ -13,11 +13,14 @@
 #import "NLMusicPlayerAccessoryViewController.h"
 #import "NLMusicPlayerAccessoryView.h"
 #import "NLHomeViewController.h"
+#import "NLPlayerManager.h"
 #import "Masonry/Masonry.h"
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @interface NLTabBarController ()
 @property (nonatomic, strong) UIView *legacyAccessoryView;
 @property (nonatomic, strong) NLMusicPlayerAccessoryViewController *playerVC;
+@property (nonatomic, strong) UITabAccessory *playerAccessory;
 @end
 
 @implementation NLTabBarController
@@ -78,8 +81,17 @@
     self.playerVC = [[NLMusicPlayerAccessoryViewController alloc] init];
     [self addChildViewController:self.playerVC];
 
-    self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:self.playerVC.view];
+    self.playerAccessory = [[UITabAccessory alloc] initWithContentView:self.playerVC.view];
     [self.playerVC didMoveToParentViewController:self];
+
+    // 无歌单时不显示小播放器，有歌单时显示
+    @weakify(self);
+    [[NLPlayerManager sharedManager].hasPlaylistSignal subscribeNext:^(NSNumber *hasPlaylist) {
+        @strongify(self);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.bottomAccessory = hasPlaylist.boolValue ? self.playerAccessory : nil;
+        });
+    }];
 }
 
 @end

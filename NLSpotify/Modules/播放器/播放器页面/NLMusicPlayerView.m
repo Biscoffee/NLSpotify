@@ -6,7 +6,6 @@
 //
 
 #import "NLMusicPlayerView.h"
-#import "NLExpandableTouchSlider.h"
 #import "NLSong.h"
 #import <Masonry/Masonry.h>
 #import <SDWebImage/SDWebImage.h>
@@ -24,8 +23,8 @@
 @property (nonatomic, strong) UIButton *nextButton;
 @property (nonatomic, strong) UIView *progressContainerView;
 @property (nonatomic, strong) UIProgressView *cacheProgressView;
-@property (nonatomic, strong) UISlider *progressSlider;
-@property (nonatomic, strong) UISlider *volumeSlider;
+@property (nonatomic, strong) NLExpandableTouchSlider *progressSlider;
+@property (nonatomic, strong) NLExpandableTouchSlider *volumeSlider;
 @property (nonatomic, strong) UIImageView *volumeLeftIcon;
 @property (nonatomic, strong) UIImageView *volumeRightIcon;
 
@@ -60,9 +59,10 @@
 @property (nonatomic, strong) UITableView *queueTableView;
 @property (nonatomic, assign, readwrite) BOOL isQueuePanelVisible;
 
+@property (nonatomic, assign) BOOL isLyricPanelVisible;
+
 @property (nonatomic, assign) NLPlayMode playMode;
 @property (nonatomic, assign) BOOL isPlaying;
-@property (nonatomic, assign) BOOL isTrackingProgress;
 @property (nonatomic, assign) BOOL isTrackingVolume;
 
 @end
@@ -90,6 +90,9 @@
     self.coverImageView.clipsToBounds = YES;
     self.coverImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.coverImageView.backgroundColor = [UIColor tertiarySystemFillColor];
+    self.coverImageView.userInteractionEnabled = YES;
+    UITapGestureRecognizer *coverTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(coverTapped)];
+    [self.coverImageView addGestureRecognizer:coverTap];
     [self addSubview:self.coverImageView];
 
     // 下滑横栏指示器
@@ -126,7 +129,6 @@
     [self.moreButton addTarget:self action:@selector(moreTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.moreButton];
 
-    // 进度条容器：仅一层缓存条（灰度在未播/已播之间）+ 顶层 UISlider（恢复为之前样式）
     self.progressContainerView = [[UIView alloc] init];
     self.progressContainerView.clipsToBounds = YES;
     [self addSubview:self.progressContainerView];
@@ -152,14 +154,13 @@
     self.totalTimeLabel.text = @"0:00";
     [self addSubview:self.totalTimeLabel];
 
-    // UISlider 恢复为之前样式：已播 = labelColor，未播 = 透明以露出下层缓存条
     self.progressSlider = [[NLExpandableTouchSlider alloc] init];
+    self.progressSlider.sliderStyle = UISliderStyleThumbless;
     self.progressSlider.minimumTrackTintColor = [UIColor labelColor];
     self.progressSlider.maximumTrackTintColor = [UIColor clearColor];
-    [self.progressSlider setThumbImage:[UIImage new] forState:UIControlStateNormal];
+    [self.progressSlider setThumbImage:[UIImage new] forState:UIControlStateHighlighted];
+//    [self.progressSlider setThumbTintColor:UIColor.clearColor];
     [self.progressSlider addTarget:self action:@selector(progressChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.progressSlider addTarget:self action:@selector(progressTouchDown:) forControlEvents:UIControlEventTouchDown];
-    [self.progressSlider addTarget:self action:@selector(progressTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
     [self.progressContainerView addSubview:self.progressSlider];
 
     UIView *timeSpacer = [[UIView alloc] init];
@@ -207,8 +208,8 @@
 
     // 添加多个触摸事件，确保能够响应滑动
     [self.volumeSlider addTarget:self action:@selector(volumeChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.volumeSlider addTarget:self action:@selector(volumeTouchDown:) forControlEvents:UIControlEventTouchDown];
-    [self.volumeSlider addTarget:self action:@selector(volumeTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
+//    [self.volumeSlider addTarget:self action:@selector(volumeTouchDown:) forControlEvents:UIControlEventTouchDown];
+//    [self.volumeSlider addTarget:self action:@selector(volumeTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
 
     self.commentButton = [self createBottomButtonWithIcon:@"message" action:@selector(commentTapped)];
     self.playModeButton = [self createBottomButtonWithIcon:@"repeat" action:@selector(playModeTapped)];
@@ -349,13 +350,19 @@
         make.left.equalTo(self).offset(30);
         make.right.equalTo(self).offset(-30);
         make.height.mas_equalTo(6);
-        make.bottom.equalTo(self.timeLabelsStackView.mas_top).offset(-11);
+        make.bottom.equalTo(self.timeLabelsStackView.mas_top).offset(-17);
     }];
     [self.cacheProgressView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.edges.equalTo(self.progressContainerView);
+        make.left.equalTo(self).offset(30);
+        make.right.equalTo(self).offset(-30);
+        make.height.mas_equalTo(6);
+        make.bottom.equalTo(self.timeLabelsStackView.mas_top).offset(-17);
     }];
     [self.progressSlider mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.edges.equalTo(self.progressContainerView);
+        make.left.equalTo(self).offset(30);
+        make.right.equalTo(self).offset(-30);
+        make.height.mas_equalTo(6);
+        make.bottom.equalTo(self.timeLabelsStackView.mas_top).offset(-17);
     }];
 
     [self.currentTimeLabel mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -449,6 +456,14 @@
     }
 }
 
+- (void)refreshProgress {
+    self.progressSlider.value = 0;
+}
+
+- (BOOL)isTrackingProgress {
+    return self.progressSlider.isTracking;
+}
+
 - (void)updateCacheProgress:(float)progress {
     [self.cacheProgressView setProgress:progress animated:YES];
 }
@@ -471,9 +486,6 @@
 
 - (void)setDismissProgress:(CGFloat)dismissProgress {
     _dismissProgress = dismissProgress;
-    /*
-     自定义set方法，先赋值，然后再下滑时随下滑进度缩小封面，同时减小不透明度alpha
-     */
     // 更新封面缩放（下滑时缩小，考虑播放状态）
     CGFloat baseScale = self.isPlaying ? 0.92 : 1.0;
     CGFloat dismissScale = 1.0 - dismissProgress * 0.1;
@@ -508,6 +520,12 @@
 
     UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:24];
     [self.playModeButton setImage:[UIImage systemImageNamed:iconName withConfiguration:config] forState:UIControlStateNormal];
+}
+
+- (void)coverTapped {
+    if ([self.delegate respondsToSelector:@selector(musicPlayerViewDidTapCover:)]) {
+        [self.delegate musicPlayerViewDidTapCover:self];
+    }
 }
 
 #pragma mark - Tool Methods && Factory Methods
@@ -610,6 +628,17 @@
         CGFloat dismissScale = 1.0f - (CGFloat)self.dismissProgress * 0.1f;
         self.coverImageView.transform = CGAffineTransformMakeScale(baseScale * dismissScale, baseScale * dismissScale);
         self.playlistButtonCircleView.hidden = YES;
+    }
+}
+
+- (void)setLyricPanelVisible:(BOOL)visible animated:(BOOL)animated {
+    if (_isLyricPanelVisible == visible) return;
+    _isLyricPanelVisible = visible;
+    CGFloat lyricHeight = visible ? 355 : 0;
+    [self applyLayoutCompact:visible queuePanelHeight:lyricHeight];
+    if (visible) {
+        self.queueModeStackView.hidden = YES;
+        self.queueTableView.hidden = YES;
     }
 }
 
@@ -733,7 +762,7 @@
     NSArray *list = [self.delegate musicPlayerViewPlaylist:self];
     NSInteger currentIndex = [self.delegate musicPlayerViewCurrentIndex:self];
     if (!list || list.count == 0) {
-        cell.textLabel.text = @"队列中无音乐。";
+        cell.textLabel.text = @"队列中无音乐";
         cell.textLabel.textColor = [UIColor tertiaryLabelColor];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
@@ -784,71 +813,6 @@
     }
 }
 
-- (void)progressTouchDown:(UISlider *)slider {
-    self.isTrackingProgress = YES;
-    [self.progressContainerView mas_updateConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(10);
-    }];
-    [UIView animateWithDuration:0.2
-                          delay:0
-         usingSpringWithDamping:0.7
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        [self layoutIfNeeded];
-    } completion:nil];
-}
-
-- (void)progressTouchUp:(UISlider *)slider {
-    self.isTrackingProgress = NO;
-    [self.progressContainerView mas_updateConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(6);
-    }];
-    [UIView animateWithDuration:0.2
-                          delay:0
-         usingSpringWithDamping:0.7
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        [self layoutIfNeeded];
-    } completion:nil];
-    // 确保最终值被应用
-    if ([self.delegate respondsToSelector:@selector(musicPlayerView:didChangeProgress:)]) {
-        [self.delegate musicPlayerView:self didChangeProgress:slider.value];
-    }
-}
-
-- (void)volumeTouchDown:(UISlider *)slider {
-    self.isTrackingVolume = YES;
-
-    [self.volumeSlider mas_updateConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(4); // 从2pt加粗到4pt
-    }];
-    [UIView animateWithDuration:0.2
-                          delay:0
-         usingSpringWithDamping:0.7
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        [self layoutIfNeeded];
-    } completion:nil];
-}
-
-- (void)volumeTouchUp:(UISlider *)slider {
-    self.isTrackingVolume = NO;
-    // 恢复细线
-    [self.volumeSlider mas_updateConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(2); // 恢复为2pt
-    }];
-    [UIView animateWithDuration:0.2
-                          delay:0
-         usingSpringWithDamping:0.7
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        [self layoutIfNeeded];
-    } completion:nil];
-}
 
 
 @end

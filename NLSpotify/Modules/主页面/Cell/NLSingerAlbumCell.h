@@ -13,10 +13,6 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NLSingerAlbumCell : NLHomeSectionCell
-/// 歌手专辑样式独有：头像、副标题、用户名
-@property (nonatomic, strong, readonly) UIImageView *userAvatar;
-@property (nonatomic, strong, readonly) UILabel *labelSmall;
-@property (nonatomic, strong, readonly) UILabel *userName;
 
 @property (nonatomic, copy) void(^didSelectSingerAlbum)(NLSingerAlbumListModel *model);
 

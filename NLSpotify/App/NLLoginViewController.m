@@ -170,10 +170,10 @@
     [NLGuestLoginService anonymousLoginWithSuccess:^(NSDictionary *response) {
         NSString *cookie = response[@"cookie"];
         if (cookie.length > 0) {
+            NSLog(@"[测试] 请求到新 cookie（游客登录），长度=%lu", (unsigned long)cookie.length);
             [NLAuthManager setCookie:cookie];
-            // NSLog(@"[游客登录] 已取到 cookie，长度=%lu", (unsigned long)cookie.length); // 专注播放器时先注释
         } else {
-            // NSLog(@"[游客登录] 登录成功但响应中无 cookie，code=%@", response[@"code"]); // 专注播放器时先注释
+            NSLog(@"[测试] 游客登录成功但响应中无 cookie，code=%@", response[@"code"] ?: @"");
         }
         [NLAuthManager setLoginStateWithAccount:response[@"account"]];
         [weakSelf loginSuccess];

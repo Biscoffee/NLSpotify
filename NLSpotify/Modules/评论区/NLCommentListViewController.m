@@ -61,7 +61,6 @@ static const NSInteger kPageSize = 20;
     if (self.isLoading) return;
     self.isLoading = YES;
     [self updateLoadingFooter:YES];
-
     __weak typeof(self) w = self;
     [NLCommentService fetchCommentsWithResourceId:self.resourceId
                                     resourceType:self.resourceType
@@ -193,8 +192,6 @@ static const NSInteger kPageSize = 20;
 }
 
 */
-
-
 #pragma mark - Getters
 
 - (UITableView *)tableView {

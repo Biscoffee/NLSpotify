@@ -2,8 +2,7 @@
 //  NLDrawerModels.h
 //  NLSpotify
 //
-//  抽屉视图数据模型（MVC - Model）
-//
+
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>

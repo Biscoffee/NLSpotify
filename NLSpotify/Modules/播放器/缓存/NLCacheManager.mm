@@ -98,9 +98,9 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
 
 - (float)cacheProgressForURL:(NSURL *)url {
     if (!url) return 0.f;
+    if ([self isFullyCachedForURL:url]) return 1.0f;
     long long total = [self totalLengthForURL:url];
     if (total <= 0) return 0.f;
-    if ([self isFullyCachedForURL:url]) return 1.f;
     NSArray<NSValue *> *ranges = [self cachedRangesForURL:url];
     if (ranges.count == 0) return 0.f;
     unsigned long long covered = 0;
@@ -108,6 +108,11 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
         covered += v.rangeValue.length;
     }
     float p = (float)((double)covered / (double)total);
+    if (p > 1.0f) {
+        p = 1.0f;
+    } else if (p < 0.0f) {
+        p = 0.0f;
+    }
     return p > 1.f ? 1.f : p;
 }
 
@@ -119,20 +124,17 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
 }
 
 
-#pragma mark - 核心：无锁化 GCD 队列调度
+#pragma mark - GCD 队列
 
 - (dispatch_queue_t)queueForMD5:(NSString *)md5 {
     if (md5.length == 0) return dispatch_get_main_queue();
-
     static NSMutableDictionary<NSString *, dispatch_queue_t> *fileQueues;
     static dispatch_queue_t dictionaryQueue;
     static dispatch_once_t onceToken;
-
     dispatch_once(&onceToken, ^{
         fileQueues = [NSMutableDictionary dictionary];
         dictionaryQueue = dispatch_queue_create("nl.cache.dictionaryQueue", DISPATCH_QUEUE_SERIAL);
     });
-
     __block dispatch_queue_t targetQueue = nil;
     dispatch_sync(dictionaryQueue, ^{
         targetQueue = fileQueues[md5];
@@ -148,9 +150,8 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
 
 - (void)cacheData:(NSData *)data forURL:(NSURL *)url atOffset:(long long)offset totalLength:(long long)totalLength {
     if (!data || data.length == 0 || !url) return;
-
     NSString *md5 = [self md5StringFromURL:url];
-    // 新增：防频繁查库拦截网。因为Range下载时每秒几十次cacheData，
+    // 防频繁查库拦截网。因为Range下载时每秒几十次cacheData，
     static NSMutableSet<NSString *> *ensuredURLs = nil;
     static dispatch_queue_t setQueue = nil;
     static dispatch_once_t onceToken;
@@ -169,9 +170,8 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
             }
         }
     });
-    // 丢进这首歌专属的后台车道排队
+    // 丢进这首歌专属的
     dispatch_async([self queueForMD5:md5], ^{
-        // 低频建档
         if (needsEnsureDB) {
             WCTDatabase *db = [[NLDataBaseManager sharedManager] database];
             NLAudioCacheInfo *info = [db getObjectOfClass:NLAudioCacheInfo.class fromTable:kAudioCacheTableName where:NLAudioCacheInfo.urlMD5 == md5];
@@ -329,11 +329,9 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
 
 #pragma mark - LRU缓存
 
-// 彻底放弃物理扫盘，使用 WCDB 直算大小的 LRU
 - (void)cleanCacheWithMaxSize:(long long)maxSize {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         WCTDatabase *db = [[NLDataBaseManager sharedManager] database];
-        // 把账本全拿出来
         NSArray<NLAudioCacheInfo *> *allInfos = [db getObjectsOfClass:NLAudioCacheInfo.class fromTable:kAudioCacheTableName];
         long long currentSize = 0;
         for (NLAudioCacheInfo *info in allInfos) {
@@ -353,7 +351,7 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
         // 开始清理老旧文件
         for (NLAudioCacheInfo *info in sortedInfos) {
             NSString *md5 = info.urlMD5;
-            // 依然在它的专属队列里杀，防止错杀
+            // 在它的专属队列里
             dispatch_sync([self queueForMD5:md5], ^{
                 NSString *tmpPath = [self.cacheDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.tmp", md5]];
                 NSString *mp3Path = [self.cacheDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.mp3", md5]];
@@ -367,14 +365,12 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
                     deleted = YES;
                 }
                 if (deleted) {
-                    // 文件删了，账本也撕掉
                     [db deleteFromTable:kAudioCacheTableName where:NLAudioCacheInfo.urlMD5 == md5];
                     NSLog(@"[缓存清理] 剔除了老旧文件 %@，释放了 %lld 空间", md5, info.totalLength);
                 }
             });
-            // 直接减去账本里记录的大小
             currentSize -= info.totalLength;
-            if (currentSize <= maxSize) break; // 达标了，停止杀戮
+            if (currentSize <= maxSize) break;
         }
     });
 }
@@ -416,16 +412,13 @@ static const long long kAudioCacheMaxSize = 500 * 1024 * 1024; // 500MB
     }];
     NSMutableArray<NSValue *> *merged = [NSMutableArray array];
     NSRange currentRange = [sortedRanges.firstObject rangeValue];
-    // 2. 遍历合并
     for (NSInteger i = 1; i < sortedRanges.count; i++) {
         NSRange nextRange = [sortedRanges[i] rangeValue];
         // 如果 current 和 next 有重叠或刚好首尾相连 (location <= MaxRange)
         if (nextRange.location <= NSMaxRange(currentRange)) {
-            // 合并它们的长度
             long long maxBoundary = MAX(NSMaxRange(currentRange), NSMaxRange(nextRange));
             currentRange.length = maxBoundary - currentRange.location;
         } else {
-            // 彻底断开，把 current 存入结果，开辟新的 current
             [merged addObject:[NSValue valueWithRange:currentRange]];
             currentRange = nextRange;
         }

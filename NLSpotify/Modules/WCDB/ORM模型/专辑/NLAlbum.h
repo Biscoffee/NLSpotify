@@ -11,7 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NLAlbum : NSObject
 
-@property (nonatomic, copy) NSString *albumId;   // 与 API 专辑 ID 一致，存成字符串
+@property (nonatomic, copy) NSString *albumId; 
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, copy) NSString *coverURL;
 @property (nonatomic, copy) NSString *artistName;

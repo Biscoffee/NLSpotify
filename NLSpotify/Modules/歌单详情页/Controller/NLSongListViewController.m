@@ -12,28 +12,28 @@
 #import "NLAlbumService.h"
 #import "NLSongListService.h"
 #import "NLPlayerManager.h"
+#import "NLMusicPlayerViewController.h"
 #import "NLDownloadManager.h"
 #import "NLSong.h"
 #import "NLSongService.h"
 #import "NLCommentListViewController.h"
 #import "NLPlayListRepository.h"
+
 #import "NLPlayList.h"
 #import "NLAlbumRepository.h"
 #import "NLAlbum.h"
 #import <Masonry/Masonry.h>
 #import <ReactiveObjC/ReactiveObjC.h>
+#import "NLLikedSongsPickerViewController.h"
 
 @interface NLSongListViewController () <UITableViewDelegate, UITableViewDataSource, NLSongListHeaderViewDelegate>
 
 @property (nonatomic, assign) NSInteger listId;
 @property (nonatomic, assign) NLSongListType type;
-
 @property (nonatomic, assign) BOOL isLocalPlayList;
 @property (nonatomic, strong) NLPlayList *localPlayList;
-
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<NLListCellModel *> *songs;
-
 @property (nonatomic, strong) NLSongListHeaderView *headerView;
 @property (nonatomic, strong) NLHeaderModel *header;
 
@@ -45,11 +45,7 @@
 
 @implementation NLSongListViewController
 
-#pragma mark - Init
-
-- (instancetype)initWithId:(NSInteger)listId
-                      type:(NLSongListType)type
-                      name:(NSString *)name {
+- (instancetype)initWithId:(NSInteger)listId type:(NLSongListType)type name:(NSString *)name {
     self = [super init];
     if (self) {
         _listId = listId;
@@ -73,8 +69,6 @@
     return self;
 }
 
-#pragma mark - Lifecycle
-
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor systemBackgroundColor];
@@ -89,24 +83,18 @@
         if (self.type == NLSongListTypeAlbum) {
             NSString *aid = [NSString stringWithFormat:@"%ld", (long)self.listId];
             self.isLikedAlbum = [NLAlbumRepository isAlbumLiked:aid];
-            [self refreshFavoriteButton];
+            [self refreshFavoriteButtonUI];
         }
         [self requestData];
     }
-
-    //__weak typeof(self) weakSelf = self;
-    @weakify(self);
-    //  订阅当前播放歌曲
-    [[[NLPlayerManager sharedManager].songSignal deliverOnMainThread] subscribeNext:^(NLSong * _Nullable song) {
-        //__strong typeof(weakSelf) strongSelf = weakSelf;
-        @strongify(self);
-        if (self && song) [self scrollToCurrentPlayingSong];
-    }];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self scrollToCurrentPlayingSong];
+    // 从「从我喜欢的歌曲添加」返回时，重新加载本地歌单内容
+    if (self.isLocalPlayList) {
+        [self loadLocalPlayListData];
+    }
 }
 
 - (void)viewDidLayoutSubviews {
@@ -133,27 +121,30 @@
 }
 
 - (void)setupNavigation {
-    UIBarButtonItem *commentItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"text.bubble"] style:UIBarButtonItemStylePlain target:self action:@selector(openCommentTapped)];
     if (self.isLocalPlayList) {
-        // 本地歌单：暂时不提供收藏/评论入口，只复用 UI 布局
-        self.navigationItem.rightBarButtonItems = @[];
+        // 本地歌单：右上角显示「从我喜欢的歌曲添加」的加号
+        UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd
+                                                                                  target:self
+                                                                                  action:@selector(addFromLikedTapped)];
+        self.navigationItem.rightBarButtonItems = @[addItem];
     } else {
+        UIBarButtonItem *commentItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"text.bubble"] style:UIBarButtonItemStylePlain target:self action:@selector(openCommentTapped)];
         UIBarButtonItem *batchDownloadItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.down.circle"] style:UIBarButtonItemStylePlain target:self action:@selector(batchDownloadTapped)];
         batchDownloadItem.accessibilityLabel = @"批量下载";
         self.favoriteItem = [[UIBarButtonItem alloc] initWithImage:nil style:UIBarButtonItemStylePlain target:self action:@selector(favoriteTapped)];
         self.navigationItem.rightBarButtonItems = @[ commentItem, batchDownloadItem, self.favoriteItem ];
-        [self refreshFavoriteButton];
+        [self refreshFavoriteButtonUI];
     }
 }
 
-- (void)addTapped { NSLog(@"This 'Plus' Button is scrapped"); }
+//- (void)addTapped { NSLog(@"This 'Plus' Button is scrapped"); }
 
 - (NSString *)currentPlayListIdString {
     if (self.type != NLSongListTypePlaylist) return nil;
     return [NSString stringWithFormat:@"%ld", (long)self.listId];
 }
 
-- (void)refreshFavoriteButton {
+- (void)refreshFavoriteButtonUI {
     if (!self.favoriteItem) return;
     BOOL liked = (self.type == NLSongListTypePlaylist) ? self.isLikedPlayList : self.isLikedAlbum;
     NSString *iconName = liked ? @"star.fill" : @"star";
@@ -173,7 +164,7 @@
         BOOL newLiked = !self.isLikedPlayList;
         if ([NLPlayListRepository setPlayList:playList liked:newLiked]) {
             self.isLikedPlayList = newLiked;
-            [self refreshFavoriteButton];
+            [self refreshFavoriteButtonUI];
         }
         return;
     }
@@ -186,12 +177,18 @@
         BOOL newLiked = !self.isLikedAlbum;
         if ([NLAlbumRepository setAlbum:album liked:newLiked]) {
             self.isLikedAlbum = newLiked;
-            [self refreshFavoriteButton];
+            [self refreshFavoriteButtonUI];
         }
     }
 }
 
-#pragma mark - 评论区入口
+- (void)addFromLikedTapped {
+    if (!self.isLocalPlayList || !self.localPlayList.playlistId.length) return;
+    NLLikedSongsPickerViewController *vc = [[NLLikedSongsPickerViewController alloc] initWithPlayList:self.localPlayList];
+    [self.navigationController pushViewController:vc animated:YES];
+}
+
+#pragma mark - 评论区
 
 - (void)openCommentTapped {
     NLCommentListResourceType type = (self.type == NLSongListTypePlaylist) 
@@ -226,7 +223,7 @@
 - (void)performBatchDownload {
     NSMutableArray<NLSong *> *songList = [self buildSongListShuffled:NO];
     if (songList.count == 0) {
-        [self showToast:@"没有可下载的歌曲"];
+        [self showToast:@"没有歌曲"];
         return;
     }
     NLDownloadManager *mgr = [NLDownloadManager sharedManager];
@@ -236,6 +233,7 @@
     [self showToast:[NSString stringWithFormat:@"已将 %lu 首加入下载队列", (unsigned long)songList.count]];
 }
 
+// 窗口弹出方法
 - (void)showToast:(NSString *)text {
     UIView *toast = [[UIView alloc] init];
     toast.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.75];
@@ -270,10 +268,11 @@
     }];
 }
 
+#pragma mark - 简介高度自适应，方案一。
 
 - (void)setupTableHeader {
     if (!self.headerView) {
-        self.headerView = [[NLSongListHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 570)];
+        self.headerView = [[NLSongListHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 0)];
         self.headerView.delegate = self;
     }
     [self.headerView configWithPlayList:self.header];
@@ -286,7 +285,7 @@
     CGFloat maxH = screenH * 0.75f; // 收起时最大高度限制
     CGFloat largeHeight = 10000.0f; // 布局计算用足够大的高度，确保能正确测量所有内容
     
-    // 1. 设置足够大的 bounds，让 Auto Layout 能正确测量
+    // 设置足够大的 bounds，让 Auto Layout 能正确测量
     self.headerView.bounds = CGRectMake(0, 0, w, largeHeight);
     [self.headerView setNeedsLayout];// 强制布局
     [self.headerView layoutIfNeeded];
@@ -305,8 +304,6 @@
     self.tableView.tableHeaderView = self.headerView;
     [self.tableView layoutIfNeeded];
 }
-
-#pragma mark - Network
 
 - (void)requestData {
     __weak typeof(self) weakSelf = self;
@@ -333,7 +330,6 @@
         [self.tableView reloadData];
         return;
     }
-
     NLHeaderModel *header = [[NLHeaderModel alloc] init];
     header.playlistId = 0;
     header.name = self.localPlayList.name ?: @"歌单";
@@ -360,7 +356,6 @@
 
     [self setupTableHeader];
     [self.tableView reloadData];
-    [self scrollToCurrentPlayingSong];
 }
 
 - (void)handleResponse:(NLHeaderModel *)header
@@ -369,36 +364,16 @@
     if (self.type == NLSongListTypePlaylist) {
         NSString *pid = [NSString stringWithFormat:@"%ld", (long)header.playlistId];
         self.isLikedPlayList = [NLPlayListRepository isPlayListLiked:pid];
-        [self refreshFavoriteButton];
+        [self refreshFavoriteButtonUI];
     } else if (self.type == NLSongListTypeAlbum) {
         NSString *aid = [NSString stringWithFormat:@"%ld", (long)self.listId];
         self.isLikedAlbum = [NLAlbumRepository isAlbumLiked:aid];
-        [self refreshFavoriteButton];
+        [self refreshFavoriteButtonUI];
     }
-    //更新歌曲
     [self.songs removeAllObjects];
     [self.songs addObjectsFromArray:songs];
-    //刷新headerView，并滚动到特定位置
     [self setupTableHeader];
     [self.tableView reloadData];
-    [self scrollToCurrentPlayingSong];
-}
-
-- (void)scrollToCurrentPlayingSong {
-    if (self.songs.count == 0) return;
-    NLSong *currentSong = [NLPlayerManager sharedManager].currentSong;
-    if (!currentSong || !currentSong.songId.length) return;
-    NSString *currentId = currentSong.songId;
-    NSInteger foundIndex = -1;
-    for (NSInteger i = 0; i < self.songs.count; i++) {
-        if ([[NSString stringWithFormat:@"%ld", (long)self.songs[i].songId] isEqualToString:currentId]) {
-            foundIndex = i;
-            break;
-        }
-    }
-    if (foundIndex < 0) return;
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:foundIndex inSection:0];
-    [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
 }
 
 #pragma mark - UITableViewDataSource
@@ -439,6 +414,7 @@
 
 // 拉取指定位置的歌曲播放 URL，然后以该首为起点播放列表
 - (void)playSongList:(NSMutableArray<NLSong *> *)songList startIndex:(NSInteger)index {
+    NSLog(@"[PlayTrace] [SongList] -> playSongList:startIndex: songs=%lu index=%ld", (unsigned long)songList.count, (long)index);
     if (songList.count == 0 || index < 0 || index >= songList.count) return;
     
     NLSong *startSong = songList[index];
@@ -446,13 +422,20 @@
     if (!songId.length) return;
     
     __weak typeof(self) weakSelf = self;
+    NSLog(@"[PlayTrace] [SongList] 将请求播放 URL songId=%@", songId);
     [[NLSongService sharedService] fetchPlayableURLWithSongId:songId
                                                     success:^(NSURL *playURL) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
+            NSLog(@"[PlayTrace] [SongList] 播放 URL 获取成功，开始调用 playWithPlaylist");
             startSong.playURL = playURL;
             [[NLPlayerManager sharedManager] playWithPlaylist:songList startIndex:index];
+            // 点击歌曲后自动弹出大播放器
+            NLMusicPlayerViewController *fullPlayer = [[NLMusicPlayerViewController alloc] init];
+            fullPlayer.modalPresentationStyle = UIModalPresentationOverFullScreen;
+            fullPlayer.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
+            [strongSelf presentViewController:fullPlayer animated:YES completion:nil];
         });
     } failure:^(NSError *error) {
         NSLog(@"获取播放URL失败: %@", error.localizedDescription);
