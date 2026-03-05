@@ -12,25 +12,23 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        // 默认上下左右各扩大 15pt 的热区
         _touchAreaExpansion = 50.0;
 
-        // ✨ 一劳永逸：在这里直接把 Normal 和 Highlighted 的滑块全部干掉！
-        // 以后外面调用这个类，再也不会出现那个恶心的巨型圆球了
+        // 在这里直接把 Normal 和 Highlighted 的滑块全部干掉！
+        // 以后外面调用这个类，再也不会出现那个巨型圆球了
         [self setThumbImage:[UIImage new] forState:UIControlStateNormal];
         [self setThumbImage:[UIImage new] forState:UIControlStateHighlighted];
     }
     return self;
 }
 
-// ✨ 核心黑魔法：隐形扩大触摸结界
+// 隐形扩大触摸结界
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     CGRect bounds = self.bounds;
     // 负数表示向外扩张
     CGRect expandedBounds = CGRectInset(bounds, -self.touchAreaExpansion, -self.touchAreaExpansion);
     return CGRectContainsPoint(expandedBounds, point);
 }
-#pragma mark - 核心魔法：指哪打哪 & 全轨道盲拖
 
 // 辅助方法：将手指的屏幕坐标，换算成 0.0 ~ 1.0 的进度值
 - (float)valueForTouch:(UITouch *)touch {
@@ -41,7 +39,7 @@
     return self.minimumValue + percentage * (self.maximumValue - self.minimumValue);
 }
 
-// 1. 手指刚刚按下的瞬间 (不管点在哪，直接把进度传送过来)
+// 手指刚刚按下的瞬间 (不管点在哪，直接把进度传送过来)
 - (BOOL)beginTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
     // 瞬间传送进度点！加上 animated:YES 会有一个很丝滑的飞过去的效果
     float tapValue = [self valueForTouch:touch];
@@ -50,11 +48,11 @@
     // 告诉外部：我的值变了！
     [self sendActionsForControlEvents:UIControlEventValueChanged];
 
-    // ✨ 极其关键：返回 YES 代表“虽然我没点中那个隐形滑块，但接下来的拖拽我强行接管了！”
+    // 返回 YES 代表“虽然我没点中那个隐形滑块，但接下来的拖拽我强行接管
     return YES;
 }
 
-// 2. 手指滑动中 (绝对跟手)
+// 手指滑动中 
 - (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
     float tapValue = [self valueForTouch:touch];
     // 滑动时不需要动画，直接赋值，保证手指和进度点 1:1 绝对黏合
